@@ -132,7 +132,7 @@ program
   .option('--cycle-delay <delay>', 'Override the cycle delay (e.g. 30m, 1h)')
   .option('--max-tokens <tokens>', 'Override max tokens per cycle', parseInt)
   .option('--max-ops <ops>', 'Override max ops per minute', parseInt)
-  .option('--thinking-level <level>', 'Override the agent thinking level')
+  .option('--thinking <level>', 'Override the agent thinking level')
   .action(async (options) => {
     const localConfigPath = path.join(process.cwd(), 'pi-loop.config.ts');
     const globalConfigPath = path.join(os.homedir(), '.pi-loop', 'config.ts');
@@ -167,8 +167,8 @@ program
       if (options.projectDir) {
         config.agent.projectDir = options.projectDir;
       }
-      if (options.thinkingLevel !== undefined) {
-        config.agent.thinkingLevel = options.thinkingLevel;
+      if (options.thinking !== undefined) {
+        config.agent.thinkingLevel = options.thinking;
       }
       if (options.cycleDelay) {
         config.rateLimits.cycleDelay = options.cycleDelay;
