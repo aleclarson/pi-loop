@@ -7,6 +7,7 @@ import * as os from 'os';
 import { execSync } from 'child_process';
 import { createJiti } from 'jiti';
 import { log } from '@clack/prompts';
+import exitHook from 'exit-hook';
 import { createLoop } from './index';
 
 const jiti = createJiti(process.cwd());
@@ -25,6 +26,20 @@ function renderSystemdEnvironment(environment?: Record<string, string | undefine
     .map(([key, value]) => `Environment=${key}=${quoteSystemdValue(value as string)}`);
 
   return lines.length > 0 ? `${lines.join('\n')}\n` : '';
+}
+
+function getRootDirectory(startDir: string = process.cwd()): string {
+  let currentDir = startDir;
+  while (true) {
+    if (fs.existsSync(path.join(currentDir, '.git'))) {
+      return currentDir;
+    }
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      return startDir; // Reached filesystem root without finding .git
+    }
+    currentDir = parentDir;
+  }
 }
 
 program
@@ -150,6 +165,48 @@ program
       log.info('Run `pi-loop init` to create one.');
       process.exit(1);
     }
+
+    const rootDir = getRootDirectory();
+    const lockFilePath = path.join(rootDir, '.pi-loop.lock');
+
+    if (fs.existsSync(lockFilePath)) {
+      try {
+        const lockData = fs.readFileSync(lockFilePath, 'utf8');
+        const pid = parseInt(lockData.trim(), 10);
+        if (!isNaN(pid)) {
+          // Check if process is running
+          process.kill(pid, 0);
+          log.error(`A pi-loop is already running in this directory (PID: ${pid}).`);
+          process.exit(1);
+        }
+      } catch (e: any) {
+        if (e.code !== 'ESRCH') {
+          // ESRCH means process doesn't exist, which is fine, lock is stale
+          log.error(`Failed to check lock file: ${e.message}`);
+        }
+      }
+    }
+
+    // Write lock file
+    try {
+      fs.writeFileSync(lockFilePath, String(process.pid), { flag: 'w' });
+    } catch (e: any) {
+      log.error(`Failed to create lock file: ${e.message}`);
+      process.exit(1);
+    }
+
+    exitHook(() => {
+      try {
+        if (fs.existsSync(lockFilePath)) {
+          const currentLockPid = parseInt(fs.readFileSync(lockFilePath, 'utf8').trim(), 10);
+          if (currentLockPid === process.pid) {
+            fs.unlinkSync(lockFilePath);
+          }
+        }
+      } catch (e) {
+        // Ignore errors during cleanup
+      }
+    });
 
     try {
       // Load config using jiti
