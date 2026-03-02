@@ -2,6 +2,7 @@
   "name": "pi-loop",
   "version": "1.0.0",
   "description": "Endless Rate-Limited Agentic Loop for pi-coding-agent",
+  "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",

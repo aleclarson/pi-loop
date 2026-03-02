@@ -22,7 +22,7 @@ pi-loop init
 This will create:
 - `pi-loop.config.ts`: Your main configuration file.
 
-*(You can also use `pi-loop init --global` to store the config in your home directory, e.g. `~/pi-loop.config.ts`)*
+*(You can also use `pi-loop init --global` to store the config in your home directory, e.g. `~/.pi-loop/config.ts`)*
 
 ## 3. Review Your Configuration
 

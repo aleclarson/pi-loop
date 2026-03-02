@@ -8,7 +8,7 @@ Configuration is authored in TypeScript (`pi-loop.config.ts`) and exported as de
 
 At runtime (`pi-loop run`):
 1. `./pi-loop.config.ts` (current working directory)
-2. `~/pi-loop.config.ts` (home directory)
+2. `~/.pi-loop/config.ts` (home directory)
 
 Local config takes precedence over global config.
 

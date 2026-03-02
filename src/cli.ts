@@ -4,6 +4,7 @@ import { program } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { execSync } from 'child_process';
 import { createJiti } from 'jiti';
 import { createLoop } from './index';
 
@@ -26,7 +27,7 @@ function renderSystemdEnvironment(environment?: Record<string, string | undefine
 }
 
 program
-  .name('pi-loop')
+  .name('.pi-loop')
   .description('Endless rate-limited loop for pi-coding-agent')
   .version('1.0.0');
 
@@ -35,8 +36,54 @@ program
   .description('Initialize pi-loop configuration')
   .option('-g, --global', 'Create config in home directory instead of current directory')
   .action((options) => {
-    const targetDir = options.global ? os.homedir() : process.cwd();
-    const configPath = path.join(targetDir, 'pi-loop.config.ts');
+    const targetDir = options.global ? path.join(os.homedir(), '.pi-loop') : process.cwd();
+    const configFileName = options.global ? 'config.ts' : 'pi-loop.config.ts';
+    const configPath = path.join(targetDir, configFileName);
+
+    if (options.global) {
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
+      const packageJsonPath = path.join(targetDir, 'package.json');
+      if (!fs.existsSync(packageJsonPath)) {
+        const binPath = fs.realpathSync(process.argv[1]);
+        const packageRoot = path.resolve(path.dirname(binPath), '..');
+        
+        const pkg = {
+          name: "pi-loop-global-config",
+          version: "1.0.0",
+          private: true,
+          dependencies: {
+            "pi-loop": `link:${packageRoot}`
+          }
+        };
+        fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2));
+        console.log(`Created package.json with link to global pi-loop at ${packageRoot}`);
+        
+        let installCmd = 'npm install';
+        try {
+          execSync('pnpm --version', { stdio: 'ignore' });
+          installCmd = 'pnpm install';
+        } catch {
+          try {
+            execSync('bun --version', { stdio: 'ignore' });
+            installCmd = 'bun install';
+          } catch {
+            try {
+              execSync('yarn --version', { stdio: 'ignore' });
+              installCmd = 'yarn';
+            } catch {}
+          }
+        }
+
+        try {
+          execSync(installCmd, { cwd: targetDir, stdio: 'inherit' });
+        } catch (e) {
+          console.error(`Failed to run ${installCmd} in ` + targetDir);
+        }
+      }
+    }
 
     if (fs.existsSync(configPath)) {
       console.error(`Config file already exists at ${configPath}`);
@@ -90,7 +137,7 @@ program
   .description('Start the pi-loop daemon')
   .action(async () => {
     const localConfigPath = path.join(process.cwd(), 'pi-loop.config.ts');
-    const globalConfigPath = path.join(os.homedir(), 'pi-loop.config.ts');
+    const globalConfigPath = path.join(os.homedir(), '.pi-loop', 'config.ts');
 
     let configPathToLoad: string | null = null;
 
@@ -101,7 +148,7 @@ program
       configPathToLoad = globalConfigPath;
       console.log(`Found global config at ${globalConfigPath}`);
     } else {
-      console.error('Could not find pi-loop.config.ts in the current directory or home directory.');
+      console.error('Could not find pi-loop.config.ts in the current directory or config.ts in the home directory.');
       console.error('Run `pi-loop init` to create one.');
       process.exit(1);
     }
@@ -129,8 +176,9 @@ program
   .description('Generate a systemd service file from the config')
   .option('-g, --global', 'Use global config in home directory')
   .action(async (options) => {
-    const targetDir = options.global ? os.homedir() : process.cwd();
-    const configPath = path.join(targetDir, 'pi-loop.config.ts');
+    const targetDir = options.global ? path.join(os.homedir(), '.pi-loop') : process.cwd();
+    const configFileName = options.global ? 'config.ts' : 'pi-loop.config.ts';
+    const configPath = path.join(targetDir, configFileName);
 
     if (!fs.existsSync(configPath)) {
       console.error(`Could not find config at ${configPath}`);

@@ -8,7 +8,7 @@
 
 - **Endless execution:** Safely loops `pi-coding-agent` with configurable delays between cycles.
 - **Zero-Dependency TypeScript Configs:** Configuration is 100% typed out-of-the-box (`createLoopConfig()`).
-- **Global or Local CLI:** Run `pi-loop` globally to target local (`./pi-loop.config.ts`) or global (`~/pi-loop.config.ts`) configurations.
+- **Global or Local CLI:** Run `pi-loop` globally to target local (`./pi-loop.config.ts`) or global (`~/.pi-loop/config.ts`) configurations.
 - **Rate-Limiting Engine:** Prevents blowing past your token budgets or operations limits per minute.
 - **Custom Strategies:** Control exactly what prompts are given to the agent each cycle.
 - **Daemon Deployable:** Scaffolds configuration for easy deployment using `systemd`.
@@ -61,7 +61,7 @@ pi-loop run
 pi-loop init
 ```
 
-*Note: Use `pi-loop init --global` to save the config to `~/pi-loop.config.ts`.*
+*Note: Use `pi-loop init --global` to save the config to `~/.pi-loop/config.ts`.*
 
 **Creates**:
 
