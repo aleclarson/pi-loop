@@ -31,6 +31,8 @@ Generates a `pi-loop.service` file under `./systemd` (or `~/systemd` with `--glo
 
 ### Behavior
 - Reads `systemd` tuning values from config where available.
+- Uses configurable `User` and `WorkingDirectory` when provided.
+- Emits `Environment=` lines for defined `systemd.environment` entries.
 - Emits a basic service file with:
   - `ExecStart=pi-loop run`
   - `Restart=always`

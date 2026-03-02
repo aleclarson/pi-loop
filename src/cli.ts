@@ -9,6 +9,22 @@ import { LoopCompletedError, createLoop } from './index';
 
 const jiti = createJiti(process.cwd());
 
+function quoteSystemdValue(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+function renderSystemdEnvironment(environment?: Record<string, string | undefined>): string {
+  if (!environment) {
+    return '';
+  }
+
+  const lines = Object.entries(environment)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => `Environment=${key}=${quoteSystemdValue(value as string)}`);
+
+  return lines.length > 0 ? `${lines.join('\n')}\n` : '';
+}
+
 program
   .name('pi-loop')
   .description('Endless rate-limited loop for pi-coding-agent')
@@ -122,10 +138,11 @@ program
       const configModule = await jiti.import(configPath);
       const config = (configModule as any).default || configModule;
 
-      const user = os.userInfo().username;
-      const workingDir = process.cwd();
+      const user = config.systemd?.user || os.userInfo().username;
+      const workingDir = config.systemd?.workingDir || targetDir;
       const restartSec = config.systemd?.restartSec || 10;
       const nice = config.systemd?.nice || 10;
+      const environment = renderSystemdEnvironment(config.systemd?.environment);
 
       const execStart = 'pi-loop run';
 
@@ -141,7 +158,7 @@ ExecStart=${execStart}
 Restart=always
 RestartSec=${restartSec}
 Nice=${nice}
-
+${environment}
 [Install]
 WantedBy=multi-user.target
 `;
