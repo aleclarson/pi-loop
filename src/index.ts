@@ -202,6 +202,6 @@ export function createLoop<Config extends LoopConfig>(
   };
 }
 
-export function createLoopConfig<T extends LoopConfig>(config: T): T {
+export function createLoopConfig(config: LoopConfig): LoopConfig {
   return config;
 }
