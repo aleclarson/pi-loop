@@ -114,7 +114,6 @@ export default createLoopConfig({
     model: 'claude-sonnet-4',
     projectDir: './',
     thinkingLevel: 'low',
-    agentDir: '~/.pi-loop/agent/',
   },
   strategy: new DefaultStrategy(),
   rateLimits: {

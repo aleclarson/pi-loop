@@ -3,6 +3,8 @@ import { RateLimiter } from './rate-limiter';
 import { AuthStorage, ModelRegistry, createAgentSession } from '@mariozechner/pi-coding-agent';
 import { log } from '@clack/prompts';
 import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
 
 export * from './types';
 
@@ -18,6 +20,27 @@ function withJitter(delayMs: number, jitterRatio: number): number {
   const min = Math.max(0, delayMs * (1 - jitterRatio));
   const max = delayMs * (1 + jitterRatio);
   return Math.round(min + Math.random() * (max - min));
+}
+
+function resolveAgentDir(configuredDir?: string): string | undefined {
+  if (configuredDir) {
+    if (configuredDir.startsWith('~/')) {
+      return path.join(os.homedir(), configuredDir.slice(2));
+    }
+    return configuredDir;
+  }
+
+  const loopAgentDir = path.join(os.homedir(), '.pi-loop', 'agent');
+  if (fs.existsSync(loopAgentDir)) {
+    return loopAgentDir;
+  }
+
+  const piAgentDir = path.join(os.homedir(), '.pi', 'agent');
+  if (fs.existsSync(piAgentDir)) {
+    return piAgentDir;
+  }
+
+  return undefined;
 }
 
 function resolveConfiguredModel(modelRef: string, agentDir?: string) {
@@ -99,14 +122,15 @@ export function createLoop<Config extends LoopConfig>(
   const endlessLoop = async ({ limiter, strategy }: { limiter: RateLimiter; strategy: Config['strategy'] }): Promise<void> => {
     let lastSummary: string | undefined = undefined;
 
-    const configuredModel = resolveConfiguredModel(validated.agent.model, validated.agent.agentDir);
+    const resolvedAgentDir = resolveAgentDir(validated.agent.agentDir);
+    const configuredModel = resolveConfiguredModel(validated.agent.model, resolvedAgentDir);
 
     // Create session outside the loop so it persists context
     const { session } = await createAgentSession({
       cwd: validated.agent.projectDir,
       model: configuredModel,
       thinkingLevel: validated.agent.thinkingLevel,
-      agentDir: validated.agent.agentDir,
+      agentDir: resolvedAgentDir,
     });
 
     while (true) {
