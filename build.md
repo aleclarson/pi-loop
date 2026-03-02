@@ -98,3 +98,13 @@ Latest hardening pass:
 - Added request body size limits and explicit invalid JSON handling.
 - Added SDK stream payload guards so malformed frames emit `error` instead of crashing listeners.
 - Added tests for session expiry, invalid JSON handling, and malformed stream payloads.
+
+## 8. Remaining Work to Reach Deployable External Sync
+
+What is still not done for a production-style `main` deployment that syncs standalone repos:
+- Configure `SYNC_PAT` in GitHub Actions secrets for this repository.
+- Initialize `git-subrepo` metadata (`.gitrepo`) in `backend/`, `cmd/`, `github-app/`, and `sdk/`.
+- Point each `.gitrepo` to real external repository URLs and verify push permissions.
+- Merge to `main` and verify `.github/workflows/sync-subrepos.yml` successfully pushes all targets.
+
+Status note: local MVP runtime is deployable today (backend + CLI + SDK + webhook bridge). External subrepo publishing automation is not fully deployable until the steps above are completed.
