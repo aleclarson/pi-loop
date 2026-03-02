@@ -89,6 +89,12 @@ export class MyStrategy implements CycleStrategy {
 
 ## Daemon Deployment (Config-Driven)
 
+Running `pi-loop` as a systemd daemon is ideal for creating an "always-on" autonomous AI teammate on a VPS or dedicated server. Running as a daemon provides several benefits:
+- **Continuous Operation:** The agent runs in the background continuously, independently of your terminal session.
+- **Automatic Restarts:** `systemd` ensures your loop automatically restarts on failure or server reboots.
+- **Resource Control:** Easily throttle CPU priority (via `nice`) to prevent the agent from impacting other services.
+- **Log Management:** Centralized logging accessible via standard tools like `journalctl`.
+
 If you are using `systemd`, configure it inside `pi-loop.config.ts`:
 
 ```typescript
