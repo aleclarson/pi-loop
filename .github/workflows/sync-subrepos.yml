@@ -1,0 +1,58 @@
+name: Sync Subrepos
+
+on:
+  push:
+    branches:
+      - main
+    # Optional: Only trigger this action if files in the subrepos actually changed
+    paths:
+      - 'backend/**'
+      - 'cmd/**'
+      - 'github-app/**'
+      - 'sdk/**'
+
+# Ensure only one sync runs at a time to prevent git conflicts on the .gitrepo files
+concurrency:
+  group: sync-subrepos
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: git-subrepo push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@v4
+        with:
+          # REQUIRED: git-subrepo needs the full git history to calculate splits
+          fetch-depth: 0
+          # Use the PAT so we have permissions to push back to this repo AND out to the subrepos
+          token: ${{ secrets.SYNC_PAT }}
+
+      - name: Setup Git Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Inject the PAT into Git so git-subrepo can push to external HTTPS URLs
+          git config --global url."https://${{ secrets.SYNC_PAT }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Install git-subrepo
+        run: |
+          git clone https://github.com/ingydotnet/git-subrepo.git ~/.git-subrepo
+          echo "GIT_SUBREPO_ROOT=$HOME/.git-subrepo" >> $GITHUB_ENV
+          echo "$HOME/.git-subrepo/lib" >> $GITHUB_PATH
+
+      - name: Push subrepos
+        run: |
+          # If one subrepo has no changes, don't fail the whole job
+          git subrepo push backend || true
+          git subrepo push cmd || true
+          git subrepo push github-app || true
+          git subrepo push sdk || true
+
+      - name: Push .gitrepo updates to monorepo
+        run: |
+          # git-subrepo updates .gitrepo state after successful pushes.
+          # Push those state updates back to main.
+          git push origin main

@@ -1,0 +1,19 @@
+{
+  "name": "@goddard-ai/cmd",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@goddard-ai/sdk": "workspace:*"
+  },
+  "bin": {
+    "goddard": "./bin/goddard.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test"
+  }
+}

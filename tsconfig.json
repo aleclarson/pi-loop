@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "sdk/src/**/*.ts",
+    "sdk/test/**/*.ts",
+    "backend/src/**/*.ts",
+    "backend/test/**/*.ts",
+    "github-app/src/**/*.ts",
+    "github-app/test/**/*.ts",
+    "cmd/src/**/*.ts",
+    "cmd/test/**/*.ts",
+    "cmd/bin/**/*.ts"
+  ]
+}

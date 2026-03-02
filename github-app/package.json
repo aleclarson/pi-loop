@@ -1,0 +1,16 @@
+{
+  "name": "@goddard-ai/github-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@goddard-ai/sdk": "workspace:*"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test"
+  }
+}
