@@ -136,9 +136,13 @@ export class GoddardSdk {
         socket.addEventListener("close", () => subscription.emit("close"));
         socket.addEventListener("error", (error) => subscription.emit("error", error));
         socket.addEventListener("message", (event) => {
-          const parsed = JSON.parse(String(event.data)) as StreamMessage;
-          subscription.emit("event", parsed.event);
-          subscription.emit(parsed.event.type, parsed.event);
+          try {
+            const parsed = JSON.parse(String(event.data)) as StreamMessage;
+            subscription.emit("event", parsed.event);
+            subscription.emit(parsed.event.type, parsed.event);
+          } catch (error) {
+            subscription.emit("error", new Error(`Invalid stream payload: ${String(error)}`));
+          }
         });
 
         await waitForSocketOpen(socket);

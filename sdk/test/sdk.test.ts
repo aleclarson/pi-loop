@@ -110,6 +110,27 @@ test("pr create and action trigger require authentication", async () => {
   assert.equal(run.status, "queued");
 });
 
+test("stream emits error event for malformed payloads", async () => {
+  const storage = new InMemoryTokenStorage();
+  await storage.setToken("tok_stream");
+
+  const sdk = createSdk({
+    baseUrl: "http://127.0.0.1:8787",
+    tokenStorage: storage,
+    webSocketImpl: FakeWebSocket as unknown as typeof WebSocket
+  });
+
+  const sub = await sdk.stream.subscribeToRepo({ owner: "org", repo: "repo" });
+
+  let errorMessage = "";
+  sub.on("error", (error) => {
+    errorMessage = error instanceof Error ? error.message : String(error);
+  });
+
+  FakeWebSocket.lastInstance?.emit("message", { data: "{" });
+  assert.match(errorMessage, /Invalid stream payload/);
+});
+
 function jsonResponse(status: number, payload: unknown): Response {
   return new Response(JSON.stringify(payload), {
     status,
@@ -117,4 +138,42 @@ function jsonResponse(status: number, payload: unknown): Response {
       "content-type": "application/json"
     }
   });
+}
+
+type Listener = (event?: any) => void;
+
+class FakeWebSocket {
+  static readonly OPEN = 1;
+  static lastInstance: FakeWebSocket | null = null;
+
+  readonly OPEN = FakeWebSocket.OPEN;
+  readyState = FakeWebSocket.OPEN;
+  #listeners = new Map<string, Set<Listener>>();
+
+  constructor(_url: URL) {
+    FakeWebSocket.lastInstance = this;
+
+    queueMicrotask(() => {
+      this.emit("open");
+    });
+  }
+
+  addEventListener(eventName: string, listener: Listener): void {
+    const listeners = this.#listeners.get(eventName) ?? new Set<Listener>();
+    listeners.add(listener);
+    this.#listeners.set(eventName, listeners);
+  }
+
+  removeEventListener(eventName: string, listener: Listener): void {
+    this.#listeners.get(eventName)?.delete(listener);
+  }
+
+  close(): void {
+    this.readyState = 3;
+    this.emit("close");
+  }
+
+  emit(eventName: string, payload?: any): void {
+    this.#listeners.get(eventName)?.forEach((listener) => listener(payload));
+  }
 }

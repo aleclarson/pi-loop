@@ -82,3 +82,19 @@ A thin UI wrapper around the SDK (`@goddard/cli`).
 7.  **Bot reacts:** The Worker immediately uses Octokit to add an 👀 reaction to the comment.
 8.  **Stream broadcasts:** The Worker passes the payload to the Durable Object, which pushes it down the WebSocket.
 9.  **Terminal updates:** The SDK parses the WebSocket frame, emits a `comment` event, and the CLI prints the comment natively in the developer's terminal.
+
+---
+
+## 7. Current Build Status (Local MVP)
+
+Implemented in this repository:
+- SDK-first architecture (`sdk/`) used by CLI (`cmd/`) and integrations.
+- Local backend control plane with auth flow endpoints, PR creation, action trigger, webhook ingest, and WebSocket repo streams.
+- GitHub App shim (`github-app/`) that forwards webhook events to backend.
+- Monorepo CI and subrepo sync workflow scaffolding.
+
+Latest hardening pass:
+- Added auth/session expiration checks in backend.
+- Added request body size limits and explicit invalid JSON handling.
+- Added SDK stream payload guards so malformed frames emit `error` instead of crashing listeners.
+- Added tests for session expiry, invalid JSON handling, and malformed stream payloads.

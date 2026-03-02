@@ -14,7 +14,13 @@ import type {
 } from "@goddard-ai/sdk";
 import { WebSocketServer, type WebSocket } from "ws";
 
-type SessionRecord = AuthSession;
+type SessionRecord = AuthSession & { expiresAt: number };
+type DeviceSessionRecord = { githubUsername: string; createdAt: number; expiresAt: number };
+
+const DEVICE_FLOW_EXPIRES_IN_SECONDS = 900;
+const DEVICE_FLOW_INTERVAL_SECONDS = 5;
+const AUTH_SESSION_TTL_MS = 1000 * 60 * 60 * 24;
+const MAX_JSON_BODY_BYTES = 1024 * 1024;
 
 type StartServerOptions = {
   port?: number;
@@ -27,7 +33,7 @@ export type BackendServer = {
 };
 
 export class InMemoryBackendControlPlane {
-  #deviceSessions = new Map<string, { githubUsername: string; createdAt: number }>();
+  #deviceSessions = new Map<string, DeviceSessionRecord>();
   #authSessions = new Map<string, SessionRecord>();
   #pullRequests: PullRequestRecord[] = [];
   #actionRuns: ActionRunRecord[] = [];
@@ -39,15 +45,20 @@ export class InMemoryBackendControlPlane {
     const githubUsername = input.githubUsername?.trim() || "developer";
     const deviceCode = `dev_${randomUUID()}`;
     const userCode = randomUUID().slice(0, 8).toUpperCase();
+    const createdAt = Date.now();
 
-    this.#deviceSessions.set(deviceCode, { githubUsername, createdAt: Date.now() });
+    this.#deviceSessions.set(deviceCode, {
+      githubUsername,
+      createdAt,
+      expiresAt: createdAt + DEVICE_FLOW_EXPIRES_IN_SECONDS * 1000
+    });
 
     return {
       deviceCode,
       userCode,
       verificationUri: "https://github.com/login/device",
-      expiresIn: 900,
-      interval: 5
+      expiresIn: DEVICE_FLOW_EXPIRES_IN_SECONDS,
+      interval: DEVICE_FLOW_INTERVAL_SECONDS
     };
   }
 
@@ -57,21 +68,28 @@ export class InMemoryBackendControlPlane {
       throw new HttpError(404, "Unknown device code");
     }
 
+    if (pending.expiresAt <= Date.now()) {
+      this.#deviceSessions.delete(input.deviceCode);
+      throw new HttpError(410, "Device code expired");
+    }
+
     const githubUsername = input.githubUsername.trim();
     if (!githubUsername) {
       throw new HttpError(400, "githubUsername is required");
     }
 
-    const session: AuthSession = {
+    const expiresAt = Date.now() + AUTH_SESSION_TTL_MS;
+    const session: SessionRecord = {
       token: `tok_${randomUUID()}`,
       githubUsername,
-      githubUserId: hashToInteger(githubUsername)
+      githubUserId: hashToInteger(githubUsername),
+      expiresAt
     };
 
     this.#authSessions.set(session.token, session);
     this.#deviceSessions.delete(input.deviceCode);
 
-    return session;
+    return toPublicSession(session);
   }
 
   getSession(token: string): AuthSession {
@@ -79,7 +97,13 @@ export class InMemoryBackendControlPlane {
     if (!session) {
       throw new HttpError(401, "Invalid token");
     }
-    return session;
+
+    if (session.expiresAt <= Date.now()) {
+      this.#authSessions.delete(token);
+      throw new HttpError(401, "Session expired");
+    }
+
+    return toPublicSession(session);
   }
 
   createPr(token: string, input: CreatePrInput): PullRequestRecord {
@@ -330,8 +354,17 @@ function writeJson(res: ServerResponse, statusCode: number, payload: unknown): v
 
 async function readJson<T>(req: IncomingMessage): Promise<T> {
   const chunks: Uint8Array[] = [];
+  let totalSize = 0;
+
   for await (const chunk of req) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+    const part = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+    totalSize += part.byteLength;
+
+    if (totalSize > MAX_JSON_BODY_BYTES) {
+      throw new HttpError(413, "Request body too large");
+    }
+
+    chunks.push(part);
   }
 
   const raw = Buffer.concat(chunks).toString("utf-8");
@@ -339,7 +372,11 @@ async function readJson<T>(req: IncomingMessage): Promise<T> {
     return {} as T;
   }
 
-  return JSON.parse(raw) as T;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    throw new HttpError(400, "Invalid JSON body");
+  }
 }
 
 function readBearerToken(req: IncomingMessage): string {
@@ -369,6 +406,14 @@ function handleHttpError(res: ServerResponse, error: unknown): void {
   const statusCode = error instanceof HttpError ? error.statusCode : 500;
   const message = error instanceof Error ? error.message : "Unknown error";
   writeJson(res, statusCode, { error: message });
+}
+
+function toPublicSession(session: SessionRecord): AuthSession {
+  return {
+    token: session.token,
+    githubUsername: session.githubUsername,
+    githubUserId: session.githubUserId
+  };
 }
 
 function hashToInteger(value: string): number {

@@ -64,6 +64,44 @@ test("http api supports login, pr creation, and action trigger", async () => {
   }
 });
 
+test("expired auth sessions are rejected", () => {
+  const originalNow = Date.now;
+
+  try {
+    Date.now = () => 1000;
+    const backend = new InMemoryBackendControlPlane();
+    const flow = backend.startDeviceFlow({ githubUsername: "alec" });
+    const session = backend.completeDeviceFlow({ deviceCode: flow.deviceCode, githubUsername: "alec" });
+
+    Date.now = () => 1000 + 1000 * 60 * 60 * 24 + 1;
+
+    assert.throws(() => backend.getSession(session.token), /Session expired/);
+  } finally {
+    Date.now = originalNow;
+  }
+});
+
+test("invalid JSON body returns 400", async () => {
+  const server = await startBackendServer(new InMemoryBackendControlPlane(), { port: 0 });
+  const baseUrl = `http://127.0.0.1:${server.port}`;
+
+  try {
+    const response = await fetch(`${baseUrl}/auth/device/start`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: "{"
+    });
+
+    assert.equal(response.status, 400);
+    const payload = (await response.json()) as { error: string };
+    assert.equal(payload.error, "Invalid JSON body");
+  } finally {
+    await server.close();
+  }
+});
+
 test("websocket stream receives webhook events", async () => {
   const server = await startBackendServer(new InMemoryBackendControlPlane(), { port: 0 });
   const baseUrl = `http://127.0.0.1:${server.port}`;
