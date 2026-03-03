@@ -1,11 +1,14 @@
 {
   "name": "@goddard-ai/github-app",
   "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
   "private": true,
   "type": "module",
   "dependencies": {
     "@goddard-ai/sdk": "workspace:*",
+    "@libsql/client": "^0.17.0",
     "@octokit/webhooks": "^14.2.0",
+    "drizzle-orm": "^0.45.1",
     "octokit": "^5.0.5"
   },
   "exports": {
@@ -14,5 +17,8 @@
   "scripts": {
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.9"
   }
 }
