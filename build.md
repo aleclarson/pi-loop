@@ -103,44 +103,33 @@ While the local MVP is fully functional and tested, the following work is requir
 
 ### A. Persistence & Infrastructure (The "Control Plane")
 *   **Database Migration:** Replace the `InMemoryBackendControlPlane` with a production implementation using **Turso** (SQLite at the edge) and **Drizzle ORM**.
-    *   Define schema for `users`, `auth_sessions`, and `pull_requests`.
-    *   Use **`sqlite3def`** (the SQLite member of the [psqldef](https://github.com/sqldef/sqldef) family) for all schema management. `sqlite3def` compares `backend/schema.sql` against the live database and emits the minimal `ALTER TABLE` / `CREATE TABLE` DDL required to converge — no hand-written migration files.
+    *   Define schema for `users`, `auth_sessions`, and `pull_requests` in `backend/src/schema.ts`.
+    *   Use **`drizzle-kit`** for all schema management. The Drizzle schema file is the single source of truth; `drizzle-kit generate` diffs the schema against the last snapshot and emits versioned migration SQL files into `backend/migrations/`.
 
-    #### Schema management with `sqlite3def` (primary path)
+    #### Schema management with `drizzle-kit`
 
-    `backend/schema.sql` is the **single source of truth** for table structure. To apply or update the schema against a Turso / LibSQL database:
+    `backend/src/schema.ts` is the **single source of truth** for table structure. To generate a new migration after editing the schema:
 
     ```bash
-    # 1. Converge the schema declaratively
-    sqlite3def --file backend/schema.sql <db-file>
-
-    # 2. Apply pragmas, seed data, triggers, and views (items sqlite3def cannot manage)
-    sqlite3 <db-file> < backend/init.sql
+    cd backend
+    pnpm db:generate   # drizzle-kit generate
     ```
 
-    When you need to add a column or a new table, **edit `schema.sql`** and re-run `sqlite3def`. It will generate and apply only the necessary `ALTER TABLE` statements. Never write migration SQL by hand.
+    To apply pending migrations to the database:
 
-    **What `sqlite3def` handles** (lives in `schema.sql`, absent from `init.sql`):
-    - `CREATE TABLE` / `ALTER TABLE` — columns, types, `PRIMARY KEY`, `AUTOINCREMENT`, `NOT NULL`, literal `DEFAULT` values, inline `REFERENCES` (foreign keys).
-    - `CREATE INDEX`.
+    ```bash
+    pnpm db:migrate    # drizzle-kit migrate
+    ```
 
-    **What `sqlite3def` cannot handle** (belongs in `init.sql`):
-    - `PRAGMA` statements.
-    - `DEFAULT (expr())` — function-call expressions in `DEFAULT` clauses (e.g. `datetime('now')`).
-    - `CREATE TRIGGER` / `CREATE VIEW`.
-    - `INSERT` seed data.
+    When you need to add a column or a new table, **edit `backend/src/schema.ts`** and run `pnpm db:generate`. Drizzle Kit snapshots the previous schema state, diffs it against the new one, and writes only the necessary `ALTER TABLE` statements into a new timestamped migration file. Never write migration SQL by hand.
 
-    #### Why `init.sql` is always required
+    **What lives in `backend/src/schema.ts`:**
+    - Table definitions (`sqliteTable`), columns, types, primary keys, `autoIncrement`, `notNull`, `references` (foreign keys).
+    - Anything exported and consumed by Drizzle ORM at runtime.
 
-    `init.sql` is a **permanent final step**, not a fallback. It handles items `sqlite3def` structurally cannot:
-
-    1.  **`PRAGMA` statements** — `sqlite3def` never emits these. `PRAGMA foreign_keys = ON` is especially critical: without it SQLite silently ignores `REFERENCES` constraints at runtime, regardless of what the schema declares.
-
-    2.  **Seed / bootstrap data** — `INSERT` statements that must exist before the application can start (e.g. default roles, system config rows).
-
-    3.  **Triggers and views** — `sqlite3def` has no support for `CREATE TRIGGER` or `CREATE VIEW`; define them here.
-
-    4.  **Function-based column defaults** — `sqlite3def` cannot parse `DEFAULT (expr())` clauses (e.g. `DEFAULT (datetime('now'))`). Columns that need a server-side computed default should use a `BEFORE INSERT` trigger defined in `init.sql`. Columns whose values are always set by the application layer (as all `created_at` fields are, via Drizzle) need no database-level default at all.
+    **What `drizzle-kit` manages automatically:**
+    - Versioned migration files in `backend/migrations/` (SQL + snapshot JSON).
+    - A `__drizzle_migrations` tracking table in the target database so `migrate` is idempotent.
 *   **Cloudflare Workers Deployment:**
     *   Port the `backend` package to the Cloudflare Workers runtime.
     *   Replace the in-memory WebSocket management with **Cloudflare Durable Objects** for scalable, real-time broadcasting.
