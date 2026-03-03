@@ -1,5 +1,5 @@
 import { createClient, type Client } from "@libsql/client";
-import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
+import { drizzle } from "drizzle-orm/libsql";
 import * as schema from "./schema.ts";
 import type {
   AuthSession,
@@ -16,10 +16,10 @@ import { type BackendControlPlane, HttpError, assertRepo } from "./control-plane
 import { randomUUID } from "node:crypto";
 
 export class TursoBackendControlPlane implements BackendControlPlane {
-  readonly #db: LibSQLDatabase<typeof schema>;
+  readonly #db: ReturnType<typeof drizzle<typeof schema>>;
 
   constructor(client: Client) {
-    this.#db = drizzle(client, { schema });
+    this.#db = drizzle({ client, schema });
   }
 
   async startDeviceFlow(input: DeviceFlowStart = {}): Promise<DeviceFlowSession> {
@@ -75,12 +75,16 @@ export class TursoBackendControlPlane implements BackendControlPlane {
   }
 
   async getSession(token: string): Promise<AuthSession> {
-    const session = await this.#db.query.authSessions.findFirst({
-      where: and(
-        eq(schema.authSessions.token, token),
-        gt(schema.authSessions.expiresAt, Date.now())
+    const [session] = await this.#db
+      .select()
+      .from(schema.authSessions)
+      .where(
+        and(
+          eq(schema.authSessions.token, token),
+          gt(schema.authSessions.expiresAt, Date.now())
+        )
       )
-    });
+      .limit(1);
 
     if (!session) {
       throw new HttpError(401, "Invalid or expired session");
