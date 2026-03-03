@@ -122,6 +122,13 @@ export function createLoop<Config extends LoopConfig>(
   const endlessLoop = async ({ limiter, strategy }: { limiter: RateLimiter; strategy: Config['strategy'] }): Promise<void> => {
     let lastSummary: string | undefined = undefined;
 
+    // Reset status at the start of each session so stale values from a
+    // previous run never bleed into a new one.
+    status.cycle = 0;
+    status.tokensUsed = 0;
+    status.uptime = 0;
+    status.startTime = Date.now();
+
     const resolvedAgentDir = resolveAgentDir(validated.agent.agentDir);
     const configuredModel = resolveConfiguredModel(validated.agent.model, resolvedAgentDir);
 
