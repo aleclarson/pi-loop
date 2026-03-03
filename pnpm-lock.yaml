@@ -54,38 +54,18 @@ importers:
       '@goddard-ai/sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@libsql/client':
-        specifier: ^0.17.0
-        version: 0.17.0
-      drizzle-orm:
-        specifier: 1.0.0-beta.15-859cf75
-        version: 1.0.0-beta.15-859cf75(@cloudflare/workers-types@4.20260301.1)(@libsql/client@0.17.0)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))
-    devDependencies:
-      drizzle-kit:
-        specifier: 1.0.0-beta.15-859cf75
-        version: 1.0.0-beta.15-859cf75
 
   github-app:
     dependencies:
       '@goddard-ai/sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@libsql/client':
-        specifier: ^0.17.0
-        version: 0.17.0
       '@octokit/webhooks':
         specifier: ^14.2.0
         version: 14.2.0
-      drizzle-orm:
-        specifier: 1.0.0-beta.15-859cf75
-        version: 1.0.0-beta.15-859cf75(@cloudflare/workers-types@4.20260301.1)(@libsql/client@0.17.0)(@types/mssql@9.1.9(@azure/core-client@1.10.1))(mssql@11.0.1(@azure/core-client@1.10.1))
       octokit:
         specifier: ^5.0.5
         version: 5.0.5
-    devDependencies:
-      drizzle-kit:
-        specifier: 1.0.0-beta.15-859cf75
-        version: 1.0.0-beta.15-859cf75
 
   sdk:
     dependencies:
