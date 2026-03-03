@@ -7,6 +7,7 @@
   "dependencies": {
     "@goddard-ai/sdk": "workspace:*",
     "@libsql/client": "^0.17.0",
+    "alchemy": "^0.87.0",
     "drizzle-orm": "1.0.0-beta.15-859cf75",
     "ws": "^8.18.0"
   },
@@ -19,7 +20,7 @@
   "scripts": {
     "start": "tsx bin/server.ts",
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "alchemy deploy",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "lint": "tsc -p tsconfig.json --noEmit",
