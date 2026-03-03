@@ -13,6 +13,7 @@ import type {
   TriggerActionInput
 } from "@goddard-ai/sdk";
 import { WebSocketServer, type WebSocket } from "ws";
+import { type BackendControlPlane, HttpError, assertRepo } from "./control-plane.ts";
 
 type SessionRecord = AuthSession & { expiresAt: number };
 type DeviceSessionRecord = { githubUsername: string; createdAt: number; expiresAt: number };
@@ -32,7 +33,7 @@ export type BackendServer = {
   close: () => Promise<void>;
 };
 
-export class InMemoryBackendControlPlane {
+export class InMemoryBackendControlPlane implements BackendControlPlane {
   #deviceSessions = new Map<string, DeviceSessionRecord>();
   #authSessions = new Map<string, SessionRecord>();
   #pullRequests: PullRequestRecord[] = [];
@@ -304,7 +305,7 @@ export async function startBackendServer(
 }
 
 async function handleHttpRequest(
-  controlPlane: InMemoryBackendControlPlane,
+  controlPlane: BackendControlPlane,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
@@ -313,34 +314,34 @@ async function handleHttpRequest(
 
   if (method === "POST" && requestUrl.pathname === "/auth/device/start") {
     const body = await readJson<DeviceFlowStart>(req);
-    return writeJson(res, 200, controlPlane.startDeviceFlow(body));
+    return writeJson(res, 200, await controlPlane.startDeviceFlow(body));
   }
 
   if (method === "POST" && requestUrl.pathname === "/auth/device/complete") {
     const body = await readJson<DeviceFlowComplete>(req);
-    return writeJson(res, 200, controlPlane.completeDeviceFlow(body));
+    return writeJson(res, 200, await controlPlane.completeDeviceFlow(body));
   }
 
   if (method === "GET" && requestUrl.pathname === "/auth/session") {
     const token = readBearerToken(req);
-    return writeJson(res, 200, controlPlane.getSession(token));
+    return writeJson(res, 200, await controlPlane.getSession(token));
   }
 
   if (method === "POST" && requestUrl.pathname === "/pr/create") {
     const token = readBearerToken(req);
     const body = await readJson<CreatePrInput>(req);
-    return writeJson(res, 200, controlPlane.createPr(token, body));
+    return writeJson(res, 200, await controlPlane.createPr(token, body));
   }
 
   if (method === "POST" && requestUrl.pathname === "/actions/trigger") {
     const token = readBearerToken(req);
     const body = await readJson<TriggerActionInput>(req);
-    return writeJson(res, 200, controlPlane.triggerAction(token, body));
+    return writeJson(res, 200, await controlPlane.triggerAction(token, body));
   }
 
   if (method === "POST" && requestUrl.pathname === "/webhooks/github") {
     const body = await readJson<GitHubWebhookInput>(req);
-    return writeJson(res, 200, controlPlane.handleGitHubWebhook(body));
+    return writeJson(res, 200, await controlPlane.handleGitHubWebhook(body));
   }
 
   throw new HttpError(404, "Not found");
@@ -385,21 +386,6 @@ function readBearerToken(req: IncomingMessage): string {
     throw new HttpError(401, "Missing Bearer token");
   }
   return header.slice("Bearer ".length);
-}
-
-function assertRepo(owner: string, repo: string): void {
-  if (!owner.trim() || !repo.trim()) {
-    throw new HttpError(400, "owner and repo are required");
-  }
-}
-
-class HttpError extends Error {
-  constructor(
-    readonly statusCode: number,
-    message: string
-  ) {
-    super(message);
-  }
 }
 
 function handleHttpError(res: ServerResponse, error: unknown): void {

@@ -17,6 +17,10 @@
   },
   "scripts": {
     "start": "tsx bin/server.ts",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test"
   },
