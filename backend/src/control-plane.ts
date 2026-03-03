@@ -18,6 +18,8 @@ export interface BackendControlPlane {
   createPr(token: string, input: CreatePrInput): Promise<PullRequestRecord> | PullRequestRecord;
   triggerAction(token: string, input: TriggerActionInput): Promise<ActionRunRecord> | ActionRunRecord;
   handleGitHubWebhook(event: GitHubWebhookInput): Promise<RepoEvent> | RepoEvent;
+  addStreamSocket?(repoKey: string, socket: unknown): void;
+  removeStreamSocket?(repoKey: string, socket: unknown): void;
 }
 
 export class HttpError extends Error {

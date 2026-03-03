@@ -242,7 +242,7 @@ export class InMemoryBackendControlPlane implements BackendControlPlane {
 }
 
 export async function startBackendServer(
-  controlPlane = new InMemoryBackendControlPlane(),
+  controlPlane: BackendControlPlane = new InMemoryBackendControlPlane(),
   options: StartServerOptions = {}
 ): Promise<BackendServer> {
   const host = options.host ?? "127.0.0.1";
@@ -275,8 +275,8 @@ export async function startBackendServer(
       const repoKey = `${owner}/${repo}`;
 
       wss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
-        controlPlane.addStreamSocket(repoKey, ws);
-        ws.on("close", () => controlPlane.removeStreamSocket(repoKey, ws));
+        controlPlane.addStreamSocket?.(repoKey, ws);
+        ws.on("close", () => controlPlane.removeStreamSocket?.(repoKey, ws));
       });
     } catch {
       socket.destroy();

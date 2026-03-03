@@ -128,7 +128,7 @@ export class TursoBackendControlPlane implements BackendControlPlane {
       .set({ number: finalNumber, url: finalUrl })
       .where(eq(schema.pullRequests.id, inserted.id));
 
-    return { ...inserted, number: finalNumber, url: finalUrl };
+    return { ...inserted, number: finalNumber, url: finalUrl, body: inserted.body ?? "" };
   }
 
   async triggerAction(token: string, input: TriggerActionInput): Promise<ActionRunRecord> {

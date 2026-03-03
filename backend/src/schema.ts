@@ -22,7 +22,7 @@ export const pullRequests = sqliteTable("pull_requests", {
   owner: text("owner").notNull(),
   repo: text("repo").notNull(),
   title: text("title").notNull(),
-  body: text("body"),
+  body: text("body").notNull().default(""),
   head: text("head").notNull(),
   base: text("base").notNull(),
   url: text("url").notNull(),
@@ -36,7 +36,7 @@ export const actionRuns = sqliteTable("action_runs", {
   repo: text("repo").notNull(),
   workflowId: text("workflow_id").notNull(),
   ref: text("ref").notNull(),
-  status: text("status").notNull(),
+  status: text("status").$type<"queued" | "in_progress" | "completed">().notNull(),
   triggeredBy: text("triggered_by").notNull(),
   createdAt: text("created_at").notNull(),
 });

@@ -1,4 +1,4 @@
-import { createClient } from "@libsql/client/cloudflare";
+import { createClient } from "@libsql/client/web";
 import { TursoBackendControlPlane } from "./persistence.ts";
 import { HttpError, assertRepo } from "./control-plane.ts";
 import type {
