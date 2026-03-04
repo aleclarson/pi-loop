@@ -1,5 +1,6 @@
 import { createSdk, type RepoEvent } from "@goddard-ai/sdk";
 import { spawnSync } from "node:child_process";
+import * as pty from "node-pty";
 import { command, option, runSafely, string, subcommands } from "cmd-ts";
 import { FileTokenStorage } from "./storage.ts";
 
@@ -16,6 +17,7 @@ type OneShotInput = {
   projectDir: string;
   piBin: string;
   sessionName: string;
+  ptyProcessCb?: (ptyProcess: pty.IPty) => void;
 };
 
 export type DaemonDeps = {
@@ -45,7 +47,7 @@ export async function runDaemonCli(
 
       try {
         const { owner, repo } = splitRepo(args.repo);
-        const runningPrs = new Map<number, { sessionName: string; isTmux: boolean }>();
+        const runningPrs = new Map<number, { sessionName: string; isTmux: boolean; ptyProcess?: pty.IPty }>();
         const subscription = await sdk.stream.subscribeToRepo({ owner, repo });
 
         io.stdout(`Daemon subscribed to ${owner}/${repo}. Waiting for PR feedback events...`);
@@ -71,10 +73,10 @@ export async function runDaemonCli(
                   `"${prompt.replace(/"/g, '\\"')}"`,
                   "Enter"
                 ]);
+              } else if (activeSession.ptyProcess) {
+                activeSession.ptyProcess.write(`\n${prompt}\n`);
               } else {
-                // Not running in tmux; we can't easily write to its stdin here since spawnSync blocks.
-                // We'd need to change runOneShot to async spawn if we wanted to pipe stdin to non-tmux.
-                io.stderr(`Cannot inject feedback dynamically because tmux is not installed. Ignoring feedback.`);
+                io.stderr(`Cannot inject feedback dynamically. Ignoring feedback.`);
               }
             } catch (err) {
               io.stderr(`Failed to inject feedback into session for PR #${event.prNumber}: ${err}`);
@@ -94,7 +96,17 @@ export async function runDaemonCli(
             }
 
             io.stdout(`Launching one-shot pi session for ${event.type} on PR #${event.prNumber}...`);
-            const exitCode = await runOneShot({ event, prompt, projectDir: args.projectDir, piBin: args.piBin, sessionName });
+            const exitCode = await runOneShot({ 
+              event, 
+              prompt, 
+              projectDir: args.projectDir, 
+              piBin: args.piBin, 
+              sessionName,
+              ptyProcessCb: (ptyProcess) => {
+                const session = runningPrs.get(event.prNumber);
+                if (session) session.ptyProcess = ptyProcess;
+              }
+            });
             io.stdout(`One-shot pi session finished for PR #${event.prNumber} (exit ${exitCode}).`);
           } catch (error) {
             io.stderr(error instanceof Error ? error.message : String(error));
@@ -134,7 +146,7 @@ export async function runDaemonCli(
   return 0;
 }
 
-function defaultRunOneShot(input: OneShotInput): number {
+async function defaultRunOneShot(input: OneShotInput): Promise<number> {
   const branchName = `pr-${input.event.prNumber}`;
   const agentsDir = `${input.projectDir}/.goddard-agents`;
   const worktreeDir = `${agentsDir}/${branchName}-${Date.now()}`;
@@ -204,15 +216,31 @@ function defaultRunOneShot(input: OneShotInput): number {
     
     // Also log how to attach
     console.log(`\nStarted pi session in tmux. Attach with: tmux attach -t ${input.sessionName}\n`);
+    return result.status ?? 1;
   } else {
-    // Fallback: spawn directly and inherit stdio (since daemon runs continuously)
-    result = spawnSync(input.piBin, [input.prompt], {
-      cwd: worktreeDir,
-      stdio: "inherit"
+    // Fallback: use node-pty to spawn the process so we can inject stdin
+    return new Promise<number>((resolve) => {
+      const ptyProcess = pty.spawn(input.piBin, [input.prompt], {
+        name: 'xterm-color',
+        cols: 80,
+        rows: 30,
+        cwd: worktreeDir,
+        env: process.env as any
+      });
+
+      if (input.ptyProcessCb) {
+        input.ptyProcessCb(ptyProcess);
+      }
+
+      ptyProcess.onData((data) => {
+        process.stdout.write(data);
+      });
+
+      ptyProcess.onExit(({ exitCode }) => {
+        resolve(exitCode);
+      });
     });
   }
-
-  return result.status ?? 1;
 }
 
 async function defaultWaitForShutdown(close: () => void): Promise<void> {
