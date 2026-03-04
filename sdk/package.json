@@ -14,7 +14,9 @@
   "dependencies": {
     "@goddard-ai/schema": "workspace:^",
     "@libsql/client": "^0.17.0",
-    "drizzle-orm": "^0.45.1"
+    "drizzle-orm": "^0.45.1",
+    "rouzer": "^1.4.0",
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.9"

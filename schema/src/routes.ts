@@ -1,0 +1,112 @@
+import { $type, route, type Route } from "rouzer";
+import * as z from "zod/mini";
+import type {
+  AuthSession,
+  CreatePrInput,
+  DeviceFlowComplete,
+  DeviceFlowSession,
+  DeviceFlowStart,
+  GitHubWebhookInput,
+  PullRequestRecord,
+  RepoEvent
+} from "./types.ts";
+
+const bearerHeaderSchema = z.object({
+  authorization: z.string()
+});
+
+export const authDeviceStartRoute = route("auth/device/start", {
+  POST: {
+    body: z.object({
+      githubUsername: z.optional(z.string())
+    }),
+    response: $type<DeviceFlowSession>()
+  }
+});
+
+export const authDeviceCompleteRoute = route("auth/device/complete", {
+  POST: {
+    body: z.object({
+      deviceCode: z.string(),
+      githubUsername: z.string()
+    }),
+    response: $type<AuthSession>()
+  }
+});
+
+export const authSessionRoute = route("auth/session", {
+  GET: {
+    headers: bearerHeaderSchema,
+    response: $type<AuthSession>()
+  }
+});
+
+export const prCreateRoute = route("pr/create", {
+  POST: {
+    headers: bearerHeaderSchema,
+    body: z.object({
+      owner: z.string(),
+      repo: z.string(),
+      title: z.string(),
+      body: z.optional(z.string()),
+      head: z.string(),
+      base: z.string()
+    }),
+    response: $type<PullRequestRecord>()
+  }
+});
+
+export const githubWebhookRoute = route("webhooks/github", {
+  POST: {
+    body: z.union([
+      z.object({
+        type: z.literal("issue_comment"),
+        owner: z.string(),
+        repo: z.string(),
+        prNumber: z.number(),
+        author: z.string(),
+        body: z.string()
+      }),
+      z.object({
+        type: z.literal("pull_request_review"),
+        owner: z.string(),
+        repo: z.string(),
+        prNumber: z.number(),
+        author: z.string(),
+        state: z.enum(["approved", "changes_requested", "commented"]),
+        body: z.string()
+      })
+    ]),
+    response: $type<RepoEvent>()
+  }
+});
+
+export const repoStreamRoute = route("stream", {
+  GET: {
+    query: z.object({
+      owner: z.string(),
+      repo: z.string(),
+      token: z.string()
+    })
+  }
+});
+
+export const apiRoutes = {
+  authDeviceStartRoute,
+  authDeviceCompleteRoute,
+  authSessionRoute,
+  prCreateRoute,
+  githubWebhookRoute,
+  repoStreamRoute
+} as const;
+
+export function routePath(routeDefinition: Route): string {
+  return `/${routeDefinition.path.source.replace(/^\/+/, "")}`;
+}
+
+export type {
+  CreatePrInput,
+  DeviceFlowComplete,
+  DeviceFlowStart,
+  GitHubWebhookInput
+};

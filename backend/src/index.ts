@@ -1,21 +1,20 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
+import { createServer as createNodeServer } from "@hattip/adapter-node";
 import {
-  AuthSession,
-  CreatePrInput,
-  DeviceFlowComplete,
-  DeviceFlowSession,
-  DeviceFlowStart,
-  GitHubWebhookInput,
-  PullRequestRecord,
-  RepoEvent,
-  DeviceFlowStartSchema,
-  DeviceFlowCompleteSchema,
-  CreatePrInputSchema,
-  GitHubWebhookInputSchema
+  type AuthSession,
+  type CreatePrInput,
+  type DeviceFlowComplete,
+  type DeviceFlowSession,
+  type DeviceFlowStart,
+  type GitHubWebhookInput,
+  type PullRequestRecord,
+  type RepoEvent,
+  repoStreamRoute,
+  routePath
 } from "@goddard-ai/schema";
 import { WebSocketServer, type WebSocket } from "ws";
 import { type BackendControlPlane, HttpError, assertRepo } from "./control-plane.ts";
+import { createBackendRouter } from "./router.ts";
 
 type SessionRecord = AuthSession & { expiresAt: number };
 type DeviceSessionRecord = { githubUsername: string; createdAt: number; expiresAt: number };
@@ -23,7 +22,8 @@ type DeviceSessionRecord = { githubUsername: string; createdAt: number; expiresA
 const DEVICE_FLOW_EXPIRES_IN_SECONDS = 900;
 const DEVICE_FLOW_INTERVAL_SECONDS = 5;
 const AUTH_SESSION_TTL_MS = 1000 * 60 * 60 * 24;
-const MAX_JSON_BODY_BYTES = 1024 * 1024;
+
+const REPO_STREAM_PATH = routePath(repoStreamRoute);
 
 type StartServerOptions = {
   port?: number;
@@ -215,27 +215,36 @@ export async function startBackendServer(
   const host = options.host ?? "127.0.0.1";
   const port = options.port ?? 8787;
 
-  const httpServer = createServer(async (req, res) => {
-    try {
-      await handleHttpRequest(controlPlane, req, res);
-    } catch (error) {
-      handleHttpError(res, error);
+  const router = createBackendRouter({
+    createControlPlane: () => controlPlane,
+    broadcastToRepo: async (_env, _owner, _repo, event) => {
+      broadcastToInMemoryStreams(controlPlane, event);
+    },
+    handleRepoStream: async () => {
+      return new Response("Expected Upgrade: websocket", { status: 426 });
     }
   });
 
+  const httpServer = createNodeServer(router);
   const wss = new WebSocketServer({ noServer: true });
 
   httpServer.on("upgrade", (request, socket, head) => {
     const requestUrl = new URL(request.url ?? "/", `http://${request.headers.host}`);
-    if (requestUrl.pathname !== "/stream") {
+    if (requestUrl.pathname !== REPO_STREAM_PATH) {
       socket.destroy();
       return;
     }
 
     try {
-      const owner = requestUrl.searchParams.get("owner") ?? "";
-      const repo = requestUrl.searchParams.get("repo") ?? "";
-      const token = requestUrl.searchParams.get("token") ?? "";
+      const streamRequest = repoStreamRoute.GET({
+        query: {
+          owner: requestUrl.searchParams.get("owner") ?? "",
+          repo: requestUrl.searchParams.get("repo") ?? "",
+          token: requestUrl.searchParams.get("token") ?? ""
+        }
+      });
+
+      const { owner, repo, token } = streamRequest.args.query;
       assertRepo(owner, repo);
       controlPlane.getSession(token);
 
@@ -271,99 +280,10 @@ export async function startBackendServer(
   };
 }
 
-async function handleHttpRequest(
-  controlPlane: BackendControlPlane,
-  req: IncomingMessage,
-  res: ServerResponse
-): Promise<void> {
-  const method = req.method ?? "GET";
-  const requestUrl = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
-
-  try {
-    if (method === "POST" && requestUrl.pathname === "/auth/device/start") {
-      const body = await readJson<unknown>(req);
-      const parsed = DeviceFlowStartSchema.parse(body);
-      return writeJson(res, 200, await controlPlane.startDeviceFlow(parsed));
-    }
-
-    if (method === "POST" && requestUrl.pathname === "/auth/device/complete") {
-      const body = await readJson<unknown>(req);
-      const parsed = DeviceFlowCompleteSchema.parse(body);
-      return writeJson(res, 200, await controlPlane.completeDeviceFlow(parsed));
-    }
-
-    if (method === "GET" && requestUrl.pathname === "/auth/session") {
-      const token = readBearerToken(req);
-      return writeJson(res, 200, await controlPlane.getSession(token));
-    }
-
-    if (method === "POST" && requestUrl.pathname === "/pr/create") {
-      const token = readBearerToken(req);
-      const body = await readJson<unknown>(req);
-      const parsed = CreatePrInputSchema.parse(body);
-      return writeJson(res, 200, await controlPlane.createPr(token, parsed));
-    }
-
-    if (method === "POST" && requestUrl.pathname === "/webhooks/github") {
-      const body = await readJson<unknown>(req);
-      const parsed = GitHubWebhookInputSchema.parse(body);
-      return writeJson(res, 200, await controlPlane.handleGitHubWebhook(parsed));
-    }
-  } catch (error) {
-    if (error && typeof error === "object" && "name" in error && error.name === "ZodError") {
-      throw new HttpError(400, "Invalid JSON body format");
-    }
-    throw error;
+function broadcastToInMemoryStreams(controlPlane: BackendControlPlane, event: RepoEvent): void {
+  if ("broadcast" in controlPlane && typeof controlPlane.broadcast === "function") {
+    controlPlane.broadcast(event);
   }
-
-  throw new HttpError(404, "Not found");
-}
-
-function writeJson(res: ServerResponse, statusCode: number, payload: unknown): void {
-  res.statusCode = statusCode;
-  res.setHeader("content-type", "application/json");
-  res.end(JSON.stringify(payload));
-}
-
-async function readJson<T>(req: IncomingMessage): Promise<T> {
-  const chunks: Uint8Array[] = [];
-  let totalSize = 0;
-
-  for await (const chunk of req) {
-    const part = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
-    totalSize += part.byteLength;
-
-    if (totalSize > MAX_JSON_BODY_BYTES) {
-      throw new HttpError(413, "Request body too large");
-    }
-
-    chunks.push(part);
-  }
-
-  const raw = Buffer.concat(chunks).toString("utf-8");
-  if (!raw) {
-    return {} as T;
-  }
-
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    throw new HttpError(400, "Invalid JSON body");
-  }
-}
-
-function readBearerToken(req: IncomingMessage): string {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith("Bearer ")) {
-    throw new HttpError(401, "Missing Bearer token");
-  }
-  return header.slice("Bearer ".length);
-}
-
-function handleHttpError(res: ServerResponse, error: unknown): void {
-  const statusCode = error instanceof HttpError ? error.statusCode : 500;
-  const message = error instanceof Error ? error.message : "Unknown error";
-  writeJson(res, statusCode, { error: message });
 }
 
 function toPublicSession(session: SessionRecord): AuthSession {

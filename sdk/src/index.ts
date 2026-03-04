@@ -1,17 +1,24 @@
-import type {
-  AuthSession,
-  CreatePrInput,
-  DeviceFlowComplete,
-  DeviceFlowSession,
-  DeviceFlowStart,
-  GitHubWebhookInput,
-  PiAgentConfig,
-  PullRequestRecord,
-  RepoEvent,
-  RepoRef,
-  StreamMessage,
-  ThinkingLevel
+import {
+  apiRoutes,
+  authDeviceCompleteRoute,
+  authDeviceStartRoute,
+  authSessionRoute,
+  prCreateRoute,
+  repoStreamRoute,
+  type AuthSession,
+  type CreatePrInput,
+  type DeviceFlowComplete,
+  type DeviceFlowSession,
+  type DeviceFlowStart,
+  type GitHubWebhookInput,
+  type PiAgentConfig,
+  type PullRequestRecord,
+  type RepoEvent,
+  type RepoRef,
+  type StreamMessage,
+  type ThinkingLevel
 } from "@goddard-ai/schema";
+import { createClient, type RouteRequest } from "rouzer";
 import { InMemoryTokenStorage, type TokenStorage } from "./token-storage.ts";
 import { appendSpecInstructions } from "./agents.ts";
 
@@ -19,6 +26,7 @@ export const SDK_VERSION = "0.1.0";
 
 type FetchLike = typeof fetch;
 type WebSocketCtor = typeof WebSocket;
+type RouzerHttpClient = ReturnType<typeof createClient<typeof apiRoutes>>;
 
 export type GoddardSdkOptions = {
   baseUrl: string;
@@ -82,24 +90,37 @@ export class GoddardSdk {
   readonly #tokenStorage: TokenStorage;
   readonly #fetchImpl: FetchLike;
   readonly #webSocketImpl: WebSocketCtor;
+  readonly #rouzerClient: RouzerHttpClient;
 
   constructor(options: GoddardSdkOptions) {
     this.#baseUrl = new URL(options.baseUrl);
     this.#tokenStorage = options.tokenStorage ?? new InMemoryTokenStorage();
     this.#fetchImpl = options.fetchImpl ?? fetch;
     this.#webSocketImpl = options.webSocketImpl ?? WebSocket;
+    this.#rouzerClient = createClient({
+      baseURL: this.#baseUrl.toString(),
+      fetch: this.#fetchImpl,
+      routes: apiRoutes
+    });
 
     this.auth = {
       startDeviceFlow: async (input = {}) => {
-        return this.#request<DeviceFlowSession>("POST", "/auth/device/start", input, false);
+        return this.#sendJson<DeviceFlowSession>(
+          this.#rouzerClient.request(authDeviceStartRoute.POST({ body: input }))
+        );
       },
       completeDeviceFlow: async (input) => {
-        const session = await this.#request<AuthSession>("POST", "/auth/device/complete", input, false);
+        const session = await this.#sendJson<AuthSession>(
+          this.#rouzerClient.request(authDeviceCompleteRoute.POST({ body: input }))
+        );
         await this.#tokenStorage.setToken(session.token);
         return session;
       },
       whoami: async () => {
-        return this.#request<AuthSession>("GET", "/auth/session", undefined, true);
+        const token = await this.#requireToken();
+        return this.#sendJson<AuthSession>(
+          this.#rouzerClient.request(authSessionRoute.GET({ headers: { authorization: `Bearer ${token}` } }))
+        );
       },
       logout: async () => {
         await this.#tokenStorage.clearToken();
@@ -108,7 +129,15 @@ export class GoddardSdk {
 
     this.pr = {
       create: async (input) => {
-        return this.#request<PullRequestRecord>("POST", "/pr/create", input, true);
+        const token = await this.#requireToken();
+        return this.#sendJson<PullRequestRecord>(
+          this.#rouzerClient.request(
+            prCreateRoute.POST({
+              headers: { authorization: `Bearer ${token}` },
+              body: input
+            })
+          )
+        );
       }
     };
 
@@ -119,10 +148,14 @@ export class GoddardSdk {
           throw new Error("Not authenticated. Run login first.");
         }
 
-        const streamUrl = new URL("/stream", this.#baseUrl);
-        streamUrl.searchParams.set("owner", owner);
-        streamUrl.searchParams.set("repo", repo);
-        streamUrl.searchParams.set("token", token);
+        const streamRequest = repoStreamRoute.GET({
+          query: {
+            owner,
+            repo,
+            token
+          }
+        });
+        const streamUrl = buildRouteUrl(this.#baseUrl, streamRequest);
 
         const socket = new this.#webSocketImpl(streamUrl);
         const subscription = new StreamSubscription(socket);
@@ -152,29 +185,8 @@ export class GoddardSdk {
     };
   }
 
-  async #request<T>(
-    method: "GET" | "POST",
-    path: string,
-    body: unknown,
-    authenticated: boolean
-  ): Promise<T> {
-    const headers: Record<string, string> = {
-      "content-type": "application/json"
-    };
-
-    if (authenticated) {
-      const token = await this.#tokenStorage.getToken();
-      if (!token) {
-        throw new Error("Not authenticated. Run login first.");
-      }
-      headers.authorization = `Bearer ${token}`;
-    }
-
-    const response = await this.#fetchImpl(new URL(path, this.#baseUrl), {
-      method,
-      headers,
-      body: method === "GET" ? undefined : JSON.stringify(body ?? {})
-    });
+  async #sendJson<T>(responsePromise: Promise<Response>): Promise<T> {
+    const response = await responsePromise;
 
     if (!response.ok) {
       const errorBody = await response.text();
@@ -183,6 +195,31 @@ export class GoddardSdk {
 
     return (await response.json()) as T;
   }
+
+  async #requireToken(): Promise<string> {
+    const token = await this.#tokenStorage.getToken();
+    if (!token) {
+      throw new Error("Not authenticated. Run login first.");
+    }
+
+    return token;
+  }
+}
+
+function buildRouteUrl(baseUrl: URL, request: RouteRequest): URL {
+  const pathname = request.path.href(request.args.path as Record<string, string> | undefined);
+  const url = new URL(pathname, baseUrl);
+  const query = request.args.query as Record<string, unknown> | undefined;
+
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined) {
+        url.searchParams.set(key, String(value));
+      }
+    }
+  }
+
+  return url;
 }
 
 async function waitForSocketOpen(socket: WebSocket): Promise<void> {
