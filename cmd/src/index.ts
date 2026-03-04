@@ -6,7 +6,7 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
-import { createJiti } from "jiti";
+import { createJiti } from "@mariozechner/jiti";
 import { createLoop } from "./loop/index.ts";
 import type { GoddardLoopConfig } from "./loop/index.ts";
 import { command, runSafely, string, option, subcommands, restPositionals, flag } from "cmd-ts";
