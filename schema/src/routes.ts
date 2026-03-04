@@ -56,6 +56,18 @@ export const prCreateRoute = route("pr/create", {
   }
 });
 
+export const prManagedRoute = route("pr/managed", {
+  GET: {
+    headers: bearerHeaderSchema,
+    query: z.object({
+      owner: z.string(),
+      repo: z.string(),
+      prNumber: z.coerce.number()
+    }),
+    response: $type<{ managed: boolean }>()
+  }
+});
+
 export const githubWebhookRoute = route("webhooks/github", {
   POST: {
     body: z.union([
@@ -91,26 +103,14 @@ export const repoStreamRoute = route("stream", {
   }
 });
 
-export const prManagedRoute = route("pr/managed", {
-  GET: {
-    headers: bearerHeaderSchema,
-    query: z.object({
-      owner: z.string(),
-      repo: z.string(),
-      prNumber: z.union([z.string(), z.number()])
-    }),
-    response: $type<{ managed: boolean }>()
-  }
-});
-
 export const apiRoutes = {
   authDeviceStartRoute,
   authDeviceCompleteRoute,
   authSessionRoute,
   prCreateRoute,
+  prManagedRoute,
   githubWebhookRoute,
-  repoStreamRoute,
-  prManagedRoute
+  repoStreamRoute
 } as const;
 
 export function routePath(routeDefinition: Route): string {

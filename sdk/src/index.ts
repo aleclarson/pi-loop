@@ -4,6 +4,7 @@ import {
   authDeviceStartRoute,
   authSessionRoute,
   prCreateRoute,
+  prManagedRoute,
   repoStreamRoute,
   type AuthSession,
   type CreatePrInput,
@@ -149,14 +150,13 @@ export class GoddardSdk {
       },
       isManaged: async ({ owner, repo, prNumber }) => {
         const token = await this.#requireToken();
-        const url = new URL(
-          `/pr/managed?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&prNumber=${prNumber}`,
-          this.#baseUrl
-        );
         const result = await this.#sendJson<{ managed: boolean }>(
-          this.#fetchImpl(url.toString(), {
-            headers: { authorization: `Bearer ${token}` }
-          })
+          this.#rouzerClient.request(
+            prManagedRoute.GET({
+              headers: { authorization: `Bearer ${token}` },
+              query: { owner, repo, prNumber }
+            })
+          )
         );
         return result.managed;
       }

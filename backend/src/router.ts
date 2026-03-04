@@ -75,6 +75,21 @@ export function createBackendRouter(dependencies: RouterDependencies = {}) {
         }
       }
     },
+    prManagedRoute: {
+      GET: async (ctx) => {
+        try {
+          const controlPlane = createControlPlane(readEnv(ctx));
+          const token = readBearerToken(ctx.headers.authorization);
+          const session = await controlPlane.getSession(token);
+          const { owner, repo, prNumber } = ctx.query;
+          assertRepo(owner, repo);
+          const managed = await controlPlane.isManagedPr(owner, repo, prNumber, session.githubUsername);
+          return { managed };
+        } catch (error) {
+          return toErrorResponse(error);
+        }
+      }
+    },
     githubWebhookRoute: {
       POST: async (ctx) => {
         try {
@@ -99,23 +114,6 @@ export function createBackendRouter(dependencies: RouterDependencies = {}) {
           await controlPlane.getSession(token);
 
           return await handleRepoStream(env, owner, repo, ctx.request);
-        } catch (error) {
-          return toErrorResponse(error);
-        }
-      }
-    },
-    prManagedRoute: {
-      GET: async (ctx) => {
-        try {
-          const env = readEnv(ctx);
-          const controlPlane = createControlPlane(env);
-          const token = readBearerToken(ctx.headers.authorization);
-          await controlPlane.getSession(token);
-
-          const { owner, repo, prNumber } = ctx.query;
-          const numPr = typeof prNumber === "string" ? parseInt(prNumber, 10) : prNumber;
-          const managed = await controlPlane.isManagedPr(owner, repo, numPr);
-          return { managed };
         } catch (error) {
           return toErrorResponse(error);
         }
