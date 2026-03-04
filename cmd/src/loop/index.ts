@@ -224,3 +224,4 @@ export function createGoddardConfig(config: GoddardLoopConfig): GoddardLoopConfi
 
 export type { CycleContext, CycleStrategy, GoddardLoopConfig, PiAgentConfig } from "./types.ts";
 export { DefaultStrategy } from "./strategies.ts";
+export { Models } from "./models.ts";
