@@ -11,11 +11,13 @@ import type { Env } from "./env.ts";
 type RouterDependencies = {
   createControlPlane?: (env: Env) => BackendControlPlane;
   broadcastToRepo?: (env: Env, owner: string, repo: string, event: RepoEvent) => Promise<void>;
+  handleRepoStream?: (env: Env, owner: string, repo: string, request: Request) => Promise<Response>;
 };
 
 export function createBackendRouter(dependencies: RouterDependencies = {}) {
   const createControlPlane = dependencies.createControlPlane ?? createTursoControlPlane;
   const broadcastToRepo = dependencies.broadcastToRepo ?? defaultBroadcastToRepo;
+  const handleRepoStream = dependencies.handleRepoStream ?? defaultHandleRepoStream;
 
   return createRouter<Env>({ debug: false }).use(apiRoutes, {
     authDeviceStartRoute: {
@@ -95,10 +97,7 @@ export function createBackendRouter(dependencies: RouterDependencies = {}) {
           assertRepo(owner, repo);
           await controlPlane.getSession(token);
 
-          const id = env.REPO_STREAM.idFromName(`${owner}/${repo}`);
-          const obj = env.REPO_STREAM.get(id);
-
-          return obj.fetch(ctx.request);
+          return await handleRepoStream(env, owner, repo, ctx.request);
         } catch (error) {
           return toErrorResponse(error);
         }
@@ -126,6 +125,12 @@ async function defaultBroadcastToRepo(env: Env, owner: string, repo: string, eve
       body: JSON.stringify(event)
     })
   );
+}
+
+async function defaultHandleRepoStream(env: Env, owner: string, repo: string, request: Request): Promise<Response> {
+  const id = env.REPO_STREAM.idFromName(`${owner}/${repo}`);
+  const obj = env.REPO_STREAM.get(id);
+  return obj.fetch(request);
 }
 
 function readEnv(ctx: { env: <K extends keyof Env>(key: K) => Env[K] }): Env {

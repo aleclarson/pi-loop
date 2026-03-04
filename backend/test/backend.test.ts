@@ -82,8 +82,8 @@ test("invalid JSON body returns 400", async () => {
     });
 
     assert.equal(response.status, 400);
-    const payload = (await response.json()) as { error: string };
-    assert.equal(payload.error, "Invalid JSON body");
+    const payload = (await response.json()) as { message: string };
+    assert.equal(payload.message, "Invalid request body");
   } finally {
     await server.close();
   }
