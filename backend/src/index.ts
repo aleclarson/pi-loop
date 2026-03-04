@@ -1,5 +1,5 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
+import { createServer as createNodeServer } from "@hattip/adapter-node";
 import {
   AuthSession,
   CreatePrInput,
@@ -9,11 +9,11 @@ import {
   GitHubWebhookInput,
   PullRequestRecord,
   RepoEvent,
-  authDeviceStartRoute,
   authDeviceCompleteRoute,
+  authDeviceStartRoute,
   authSessionRoute,
-  prCreateRoute,
   githubWebhookRoute,
+  prCreateRoute,
   repoStreamRoute,
   routePath
 } from "@goddard-ai/schema";
@@ -225,11 +225,11 @@ export async function startBackendServer(
   const host = options.host ?? "127.0.0.1";
   const port = options.port ?? 8787;
 
-  const httpServer = createServer(async (req, res) => {
+  const httpServer = createNodeServer(async ({ request }) => {
     try {
-      await handleHttpRequest(controlPlane, req, res);
+      return await handleHttpRequest(controlPlane, request);
     } catch (error) {
-      handleHttpError(res, error);
+      return handleHttpError(error);
     }
   });
 
@@ -287,47 +287,43 @@ export async function startBackendServer(
   };
 }
 
-async function handleHttpRequest(
-  controlPlane: BackendControlPlane,
-  req: IncomingMessage,
-  res: ServerResponse
-): Promise<void> {
-  const method = req.method ?? "GET";
-  const requestUrl = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+async function handleHttpRequest(controlPlane: BackendControlPlane, request: Request): Promise<Response> {
+  const method = request.method;
+  const requestUrl = new URL(request.url);
 
   try {
     if (method === "POST" && requestUrl.pathname === AUTH_DEVICE_START_PATH) {
-      const body = await readJson<any>(req);
+      const body = await readJson<any>(request);
       const parsed = authDeviceStartRoute.POST({ body }).args.body;
-      return writeJson(res, 200, await controlPlane.startDeviceFlow(parsed));
+      return Response.json(await controlPlane.startDeviceFlow(parsed));
     }
 
     if (method === "POST" && requestUrl.pathname === AUTH_DEVICE_COMPLETE_PATH) {
-      const body = await readJson<any>(req);
+      const body = await readJson<any>(request);
       const parsed = authDeviceCompleteRoute.POST({ body }).args.body;
-      return writeJson(res, 200, await controlPlane.completeDeviceFlow(parsed));
+      return Response.json(await controlPlane.completeDeviceFlow(parsed));
     }
 
     if (method === "GET" && requestUrl.pathname === AUTH_SESSION_PATH) {
-      const token = readBearerToken(req);
+      const token = readBearerToken(request.headers.get("authorization"));
       authSessionRoute.GET({ headers: { authorization: `Bearer ${token}` } });
-      return writeJson(res, 200, await controlPlane.getSession(token));
+      return Response.json(await controlPlane.getSession(token));
     }
 
     if (method === "POST" && requestUrl.pathname === PR_CREATE_PATH) {
-      const token = readBearerToken(req);
-      const body = await readJson<any>(req);
+      const token = readBearerToken(request.headers.get("authorization"));
+      const body = await readJson<any>(request);
       const parsed = prCreateRoute.POST({
         headers: { authorization: `Bearer ${token}` },
         body
       }).args.body;
-      return writeJson(res, 200, await controlPlane.createPr(token, parsed));
+      return Response.json(await controlPlane.createPr(token, parsed));
     }
 
     if (method === "POST" && requestUrl.pathname === GITHUB_WEBHOOK_PATH) {
-      const body = await readJson<any>(req);
+      const body = await readJson<any>(request);
       const parsed = githubWebhookRoute.POST({ body }).args.body;
-      return writeJson(res, 200, await controlPlane.handleGitHubWebhook(parsed));
+      return Response.json(await controlPlane.handleGitHubWebhook(parsed));
     }
   } catch (error) {
     if (error && typeof error === "object" && "name" in error && error.name === "ZodError") {
@@ -339,28 +335,17 @@ async function handleHttpRequest(
   throw new HttpError(404, "Not found");
 }
 
-function writeJson(res: ServerResponse, statusCode: number, payload: unknown): void {
-  res.statusCode = statusCode;
-  res.setHeader("content-type", "application/json");
-  res.end(JSON.stringify(payload));
-}
-
-async function readJson<T>(req: IncomingMessage): Promise<T> {
-  const chunks: Uint8Array[] = [];
-  let totalSize = 0;
-
-  for await (const chunk of req) {
-    const part = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
-    totalSize += part.byteLength;
-
-    if (totalSize > MAX_JSON_BODY_BYTES) {
-      throw new HttpError(413, "Request body too large");
-    }
-
-    chunks.push(part);
+async function readJson<T>(request: Request): Promise<T> {
+  const contentLength = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(contentLength) && contentLength > MAX_JSON_BODY_BYTES) {
+    throw new HttpError(413, "Request body too large");
   }
 
-  const raw = Buffer.concat(chunks).toString("utf-8");
+  const raw = await request.text();
+  if (Buffer.byteLength(raw, "utf8") > MAX_JSON_BODY_BYTES) {
+    throw new HttpError(413, "Request body too large");
+  }
+
   if (!raw) {
     return {} as T;
   }
@@ -372,18 +357,17 @@ async function readJson<T>(req: IncomingMessage): Promise<T> {
   }
 }
 
-function readBearerToken(req: IncomingMessage): string {
-  const header = req.headers.authorization;
+function readBearerToken(header: string | null): string {
   if (!header || !header.startsWith("Bearer ")) {
     throw new HttpError(401, "Missing Bearer token");
   }
   return header.slice("Bearer ".length);
 }
 
-function handleHttpError(res: ServerResponse, error: unknown): void {
+function handleHttpError(error: unknown): Response {
   const statusCode = error instanceof HttpError ? error.statusCode : 500;
   const message = error instanceof Error ? error.message : "Unknown error";
-  writeJson(res, statusCode, { error: message });
+  return Response.json({ error: message }, { status: statusCode });
 }
 
 function toPublicSession(session: SessionRecord): AuthSession {
