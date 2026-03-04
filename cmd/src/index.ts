@@ -370,7 +370,7 @@ const DEFAULT_LOOP_CONFIG_TEMPLATE = `import { Models } from "@goddard-ai/cmd/lo
 
 export default {
   agent: {
-    model: Models.AnthropicClaudeSonnet45,
+    model: Models.Anthropic.ClaudeSonnet45,
     projectDir: "./",
     thinkingLevel: "low"
   },
