@@ -49,50 +49,53 @@ test("http api supports login and pr creation", async () => {
   }
 });
 
-test("managed PR endpoint returns true only for PRs created by Goddard", async () => {
+test("managed PR endpoint returns true only for PRs created by the authenticated user", async () => {
   const server = await startBackendServer(new InMemoryBackendControlPlane(), { port: 0 });
   const baseUrl = `http://127.0.0.1:${server.port}`;
 
   try {
+    // alec creates a PR
     const flow = await postJson(`${baseUrl}/auth/device/start`, { githubUsername: "alec" });
-    const session = await postJson(`${baseUrl}/auth/device/complete`, {
+    const alecSession = await postJson(`${baseUrl}/auth/device/complete`, {
       deviceCode: flow.deviceCode,
       githubUsername: "alec"
     });
 
     await postJson(
       `${baseUrl}/pr/create`,
-      {
-        owner: "goddard-ai",
-        repo: "cmd",
-        title: "Add CLI",
-        head: "feat/cli",
-        base: "main"
-      },
-      session.token
+      { owner: "goddard-ai", repo: "cmd", title: "Add CLI", head: "feat/cli", base: "main" },
+      alecSession.token
     );
 
+    // alec sees her own PR as managed
     const managedResponse = await fetch(
       `${baseUrl}/pr/managed?owner=goddard-ai&repo=cmd&prNumber=1`,
-      {
-        headers: {
-          authorization: `Bearer ${session.token}`
-        }
-      }
+      { headers: { authorization: `Bearer ${alecSession.token}` } }
     );
     assert.equal(managedResponse.status, 200);
     assert.deepEqual(await managedResponse.json(), { managed: true });
 
+    // alec sees non-existent PR as unmanaged
     const unmanagedResponse = await fetch(
       `${baseUrl}/pr/managed?owner=goddard-ai&repo=cmd&prNumber=9`,
-      {
-        headers: {
-          authorization: `Bearer ${session.token}`
-        }
-      }
+      { headers: { authorization: `Bearer ${alecSession.token}` } }
     );
     assert.equal(unmanagedResponse.status, 200);
     assert.deepEqual(await unmanagedResponse.json(), { managed: false });
+
+    // a different user cannot see alec's PR as managed (V2 ownership check)
+    const bobFlow = await postJson(`${baseUrl}/auth/device/start`, { githubUsername: "bob" });
+    const bobSession = await postJson(`${baseUrl}/auth/device/complete`, {
+      deviceCode: bobFlow.deviceCode,
+      githubUsername: "bob"
+    });
+
+    const foreignResponse = await fetch(
+      `${baseUrl}/pr/managed?owner=goddard-ai&repo=cmd&prNumber=1`,
+      { headers: { authorization: `Bearer ${bobSession.token}` } }
+    );
+    assert.equal(foreignResponse.status, 200);
+    assert.deepEqual(await foreignResponse.json(), { managed: false });
   } finally {
     await server.close();
   }
@@ -148,10 +151,11 @@ test("sse stream receives webhook events", async () => {
     });
 
     const streamResponse = await fetch(
-      `${baseUrl}/stream?owner=goddard-ai&repo=sdk&token=${session.token}`,
+      `${baseUrl}/stream?owner=goddard-ai&repo=sdk`,
       {
         headers: {
-          accept: "text/event-stream"
+          accept: "text/event-stream",
+          authorization: `Bearer ${session.token}`
         }
       }
     );

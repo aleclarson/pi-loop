@@ -4,6 +4,7 @@ import {
   authDeviceStartRoute,
   authSessionRoute,
   prCreateRoute,
+  prManagedRoute,
   repoStreamRoute,
   type AuthSession,
   type CreatePrInput,
@@ -149,14 +150,13 @@ export class GoddardSdk {
       },
       isManaged: async ({ owner, repo, prNumber }) => {
         const token = await this.#requireToken();
-        const url = new URL(
-          `/pr/managed?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&prNumber=${prNumber}`,
-          this.#baseUrl
-        );
         const result = await this.#sendJson<{ managed: boolean }>(
-          this.#fetchImpl(url.toString(), {
-            headers: { authorization: `Bearer ${token}` }
-          })
+          this.#rouzerClient.request(
+            prManagedRoute.GET({
+              headers: { authorization: `Bearer ${token}` },
+              query: { owner, repo, prNumber }
+            })
+          )
         );
         return result.managed;
       }
@@ -170,11 +170,8 @@ export class GoddardSdk {
         }
 
         const streamRequest = repoStreamRoute.GET({
-          query: {
-            owner,
-            repo,
-            token
-          }
+          headers: { authorization: `Bearer ${token}` },
+          query: { owner, repo }
         });
         const streamUrl = buildRouteUrl(this.#baseUrl, streamRequest);
         const abortController = new AbortController();
@@ -182,7 +179,8 @@ export class GoddardSdk {
         const response = await this.#fetchImpl(streamUrl, {
           method: "GET",
           headers: {
-            accept: "text/event-stream"
+            accept: "text/event-stream",
+            authorization: `Bearer ${token}`
           },
           signal: abortController.signal
         });

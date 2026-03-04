@@ -56,6 +56,18 @@ export const prCreateRoute = route("pr/create", {
   }
 });
 
+export const prManagedRoute = route("pr/managed", {
+  GET: {
+    headers: bearerHeaderSchema,
+    query: z.object({
+      owner: z.string(),
+      repo: z.string(),
+      prNumber: z.coerce.number()
+    }),
+    response: $type<{ managed: boolean }>()
+  }
+});
+
 export const githubWebhookRoute = route("webhooks/github", {
   POST: {
     body: z.union([
@@ -83,10 +95,10 @@ export const githubWebhookRoute = route("webhooks/github", {
 
 export const repoStreamRoute = route("stream", {
   GET: {
+    headers: bearerHeaderSchema,
     query: z.object({
       owner: z.string(),
-      repo: z.string(),
-      token: z.string()
+      repo: z.string()
     })
   }
 });
@@ -96,6 +108,7 @@ export const apiRoutes = {
   authDeviceCompleteRoute,
   authSessionRoute,
   prCreateRoute,
+  prManagedRoute,
   githubWebhookRoute,
   repoStreamRoute
 } as const;
