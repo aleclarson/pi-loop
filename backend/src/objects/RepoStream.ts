@@ -47,7 +47,7 @@ export class RepoStream extends DurableObject {
   }
 
   async broadcast(event: RepoEvent): Promise<void> {
-    const payload = this.#encoder.encode(`data: ${JSON.stringify({ event })}\n\n`);
+    const payload = this.#encoder.encode(formatSseDataFrame(JSON.stringify({ event })));
     await Promise.allSettled(
       [...this.#sessions].map(async (session) => {
         try {
@@ -63,4 +63,10 @@ export class RepoStream extends DurableObject {
     this.#sessions.delete(session);
     void session.writer.close().catch(() => {});
   }
+}
+
+function formatSseDataFrame(payload: string): string {
+  const normalized = payload.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = normalized.split("\n");
+  return `${lines.map((line) => `data: ${line}`).join("\n")}\n\n`;
 }

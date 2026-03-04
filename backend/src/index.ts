@@ -319,7 +319,7 @@ function createSseSession(onClose: () => void): { response: Response; sink: Stre
         return;
       }
 
-      controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+      controller.enqueue(encoder.encode(formatSseDataFrame(payload)));
     },
     close
   };
@@ -335,6 +335,12 @@ function createSseSession(onClose: () => void): { response: Response; sink: Stre
     }),
     sink
   };
+}
+
+function formatSseDataFrame(payload: string): string {
+  const normalized = payload.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = normalized.split("\n");
+  return `${lines.map((line) => `data: ${line}`).join("\n")}\n\n`;
 }
 
 function toPublicSession(session: SessionRecord): AuthSession {
