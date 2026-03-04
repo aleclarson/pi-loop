@@ -27,9 +27,6 @@ test("createBackendRouter handles auth device start via rouzer route map", async
     },
     handleGitHubWebhook() {
       throw new Error("not used");
-    },
-    isManagedPr: () => {
-      throw new Error("not mocked");
     }
   };
 
@@ -84,9 +81,6 @@ test("createBackendRouter proxies stream route to durable object", async () => {
     },
     handleGitHubWebhook() {
       throw new Error("not used");
-    },
-    isManagedPr: () => {
-      throw new Error("not mocked");
     }
   };
 
@@ -119,9 +113,6 @@ test("createBackendRouter serializes HttpError responses", async () => {
     },
     handleGitHubWebhook() {
       throw new Error("not used");
-    },
-    isManagedPr: () => {
-      throw new Error("not mocked");
     }
   };
 

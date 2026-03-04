@@ -172,7 +172,6 @@ function createMockSdk(partial: PartialSdk): SdkClient {
       create: async () => {
         throw new Error("not mocked");
       },
-      isManaged: async () => false,
       ...partial.pr
     },
     stream: {

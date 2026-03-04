@@ -2,7 +2,7 @@
 
 This guide walks you through using the production version of Goddard.
 
-Goddard allows you to create Pull Requests, trigger focused AI sessions, and authenticate terminal workflows against the backend.
+Goddard allows you to create Pull Requests, trigger GitHub Actions, and receive real-time streaming updates about repository events directly in your terminal.
 
 ---
 
@@ -62,15 +62,15 @@ goddard actions trigger \
 
 ---
 
-## 5. PR Feedback Automation (Daemon)
+## 5. Live Stream Repository Events
 
-Repository event streaming is consumed by `@goddard-ai/daemon`, not the interactive CLI. Run the daemon from the monorepo root:
+Watch real-time events (comments, reviews, CI status) in your terminal:
 
 ```bash
-pnpm --dir=daemon daemon run --repo <owner/repo> --project-dir $(pwd)
+goddard stream
 ```
 
-The daemon listens for PR comments/reviews and launches one-shot `pi` sessions for managed PRs.
+Keep this running to see live updates as they happen on GitHub.
 
 ---
 
