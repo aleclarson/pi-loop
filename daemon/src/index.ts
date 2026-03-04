@@ -116,13 +116,21 @@ function defaultRunOneShot(input: OneShotInput): number {
   // Ensure agents dir exists
   spawnSync("mkdir", ["-p", agentsDir]);
 
-  // Use APFS copy-on-write clone to create the workspace instantly
+  // Use copy-on-write clone to create the workspace instantly based on OS
   try {
-    const cloneResult = spawnSync("cp", ["-cR", input.projectDir, worktreeDir], {
+    let cpArgs = ["-R", input.projectDir, worktreeDir];
+    if (process.platform === "darwin") {
+      cpArgs = ["-cR", input.projectDir, worktreeDir];
+    } else if (process.platform === "linux") {
+      cpArgs = ["--reflink=auto", "-R", input.projectDir, worktreeDir];
+    }
+
+    const cloneResult = spawnSync("cp", cpArgs, {
       stdio: "ignore"
     });
-    if (cloneResult.status !== 0) {
-      // Fallback to regular copy if APFS clone fails
+    
+    if (cloneResult.status !== 0 && process.platform === "darwin") {
+      // Fallback to regular copy if APFS clone fails on macOS
       spawnSync("cp", ["-R", input.projectDir, worktreeDir], {
         stdio: "ignore"
       });
