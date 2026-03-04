@@ -20,7 +20,7 @@ import { appendSpecInstructions } from "./agents.ts";
 export const SDK_VERSION = "0.1.0";
 
 type FetchLike = typeof fetch;
-type RouzerHttpClient = ReturnType<typeof createClient<typeof routes.apiRoutes>>;
+type RouzerHttpClient = ReturnType<typeof createClient<typeof routes>>;
 
 export type GoddardSdkOptions = {
   baseUrl: string;
@@ -103,7 +103,7 @@ export class GoddardSdk {
     this.#rouzerClient = createClient({
       baseURL: this.#baseUrl.toString(),
       fetch: this.#fetchImpl,
-      routes: routes.apiRoutes
+      routes: routes
     });
 
     this.auth = {

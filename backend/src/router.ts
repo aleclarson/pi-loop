@@ -17,7 +17,7 @@ export function createBackendRouter(dependencies: RouterDependencies = {}) {
   const broadcastToRepo = dependencies.broadcastToRepo ?? noopBroadcast;
   const handleRepoStream = dependencies.handleRepoStream ?? defaultHandleRepoStream;
 
-  return createRouter<Env>({ debug: false }).use(routes.apiRoutes, {
+  return createRouter<Env>({ debug: false }).use(routes, {
     authDeviceStartRoute: {
       POST: async (ctx) => {
         try {

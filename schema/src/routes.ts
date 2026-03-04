@@ -1,4 +1,4 @@
-import { $type, route, type Route } from "rouzer";
+import { $type, route } from "rouzer";
 import * as z from "zod/mini";
 import type {
   AuthSession,
@@ -102,16 +102,6 @@ export const repoStreamRoute = route("stream", {
     })
   }
 });
-
-export const apiRoutes = {
-  authDeviceStartRoute,
-  authDeviceCompleteRoute,
-  authSessionRoute,
-  prCreateRoute,
-  prManagedRoute,
-  githubWebhookRoute,
-  repoStreamRoute
-} as const;
 
 export type {
   CreatePrInput,
