@@ -133,7 +133,7 @@ export class TursoBackendControlPlane implements BackendControlPlane {
     return { ...inserted, number: finalNumber, url: finalUrl, body: inserted.body ?? "" };
   }
 
-  async isManagedPr(owner: string, repo: string, prNumber: number): Promise<boolean> {
+  async isManagedPr(owner: string, repo: string, prNumber: number, githubUsername: string): Promise<boolean> {
     assertRepo(owner, repo);
     if (!Number.isInteger(prNumber) || prNumber <= 0) {
       throw new HttpError(400, "prNumber must be a positive integer");
@@ -146,7 +146,8 @@ export class TursoBackendControlPlane implements BackendControlPlane {
         and(
           eq(schema.pullRequests.owner, owner),
           eq(schema.pullRequests.repo, repo),
-          eq(schema.pullRequests.number, prNumber)
+          eq(schema.pullRequests.number, prNumber),
+          eq(schema.pullRequests.createdBy, githubUsername)
         )
       )
       .limit(1);

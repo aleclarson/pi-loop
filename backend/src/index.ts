@@ -145,7 +145,7 @@ export class InMemoryBackendControlPlane implements BackendControlPlane {
     return record;
   }
 
-  isManagedPr(owner: string, repo: string, prNumber: number): boolean {
+  isManagedPr(owner: string, repo: string, prNumber: number, githubUsername: string): boolean {
     assertRepo(owner, repo);
     if (!Number.isInteger(prNumber) || prNumber <= 0) {
       throw new HttpError(400, "prNumber must be a positive integer");
@@ -153,7 +153,10 @@ export class InMemoryBackendControlPlane implements BackendControlPlane {
 
     return this.#pullRequests.some(
       (pullRequest) =>
-        pullRequest.owner === owner && pullRequest.repo === repo && pullRequest.number === prNumber
+        pullRequest.owner === owner &&
+        pullRequest.repo === repo &&
+        pullRequest.number === prNumber &&
+        pullRequest.createdBy === githubUsername
     );
   }
 
