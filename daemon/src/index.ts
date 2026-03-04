@@ -165,15 +165,32 @@ function defaultRunOneShot(input: OneShotInput): number {
     // Ignore error
   }
 
-  const sessionName = `pi-pr-${input.event.prNumber}-${Date.now()}`;
-  const tmuxCmd = `tmux new-session -d -s ${sessionName} -c ${worktreeDir} "${input.piBin} '${input.prompt.replace(/'/g, "'\\''")}'"`;
+  // Check if tmux is installed
+  const hasTmux = spawnSync("which", ["tmux"]).status === 0;
 
-  const result = spawnSync("sh", ["-c", tmuxCmd], {
-    stdio: "inherit"
-  });
-  
-  // Also log how to attach
-  console.log(`\nStarted pi session in tmux. Attach with: tmux attach -t ${sessionName}\n`);
+  let result;
+  if (hasTmux) {
+    const sessionName = `pi-pr-${input.event.prNumber}-${Date.now()}`;
+    const tmuxCmd = `tmux new-session -d -s ${sessionName} -c ${worktreeDir} "${input.piBin} '${input.prompt.replace(/'/g, "'\\''")}'"`;
+
+    result = spawnSync("sh", ["-c", tmuxCmd], {
+      stdio: "inherit"
+    });
+    
+    // Also log how to attach
+    console.log(`\nStarted pi session in tmux. Attach with: tmux attach -t ${sessionName}\n`);
+  } else {
+    // Fallback: spawn in background and pipe logs
+    const logFile = `${worktreeDir}/.goddard-pi.log`;
+    const cmd = `${input.piBin} '${input.prompt.replace(/'/g, "'\\''")}' > '${logFile}' 2>&1 &`;
+    
+    result = spawnSync("sh", ["-c", cmd], {
+      cwd: worktreeDir,
+      stdio: "ignore"
+    });
+
+    console.log(`\nStarted pi session in background (tmux not found). Logs: tail -f ${logFile}\n`);
+  }
 
   return result.status ?? 1;
 }
