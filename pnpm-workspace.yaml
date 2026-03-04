@@ -5,3 +5,4 @@ packages:
   - 'github-app'
   - 'sdk'
   - 'schema'
+  - 'storage'

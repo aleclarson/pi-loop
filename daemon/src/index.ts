@@ -2,7 +2,7 @@ import { createSdk, type RepoEvent } from "@goddard-ai/sdk";
 import { spawnSync } from "node:child_process";
 import * as pty from "node-pty";
 import { command, option, runSafely, string, subcommands } from "cmd-ts";
-import { FileTokenStorage } from "./storage.ts";
+import { CredentialsTokenStorage } from "@goddard-ai/storage";
 
 export type DaemonIo = {
   stdout: (line: string) => void;
@@ -41,7 +41,7 @@ export async function runDaemonCli(
     },
     handler: async (args) => {
       const baseUrl = args.baseUrl || process.env.GODDARD_BASE_URL || "http://127.0.0.1:8787";
-      const sdk = deps.createSdkClient?.(baseUrl) ?? createSdk({ baseUrl, tokenStorage: new FileTokenStorage() });
+      const sdk = deps.createSdkClient?.(baseUrl) ?? createSdk({ baseUrl, tokenStorage: new CredentialsTokenStorage() });
       const runOneShot = deps.runOneShot ?? defaultRunOneShot;
       const waitForShutdown = deps.waitForShutdown ?? defaultWaitForShutdown;
 

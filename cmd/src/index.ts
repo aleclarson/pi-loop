@@ -1,6 +1,6 @@
 import { createSdk, LOOP_SYSTEM_PROMPT, SPEC_SYSTEM_PROMPT, PROPOSE_SYSTEM_PROMPT } from "@goddard-ai/sdk";
 import { inferRepoFromGitConfig, splitRepo } from "./git.ts";
-import { FileTokenStorage } from "./storage.ts";
+import { FileTokenStorage, getLocalConfigPath, getGlobalConfigPath, fileExists, resolveLoopConfigPath } from "@goddard-ai/storage";
 import { spawnSync } from "node:child_process";
 import { access, mkdir, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
@@ -200,8 +200,8 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
     handler: async (args) => {
       try {
         const targetPath = args.global
-          ? join(homedir(), ".goddard", "config.ts")
-          : join(process.cwd(), "goddard.config.ts");
+          ? getGlobalConfigPath()
+          : getLocalConfigPath();
 
         if (await fileExists(targetPath)) {
           io.stderr(`Config file already exists at ${targetPath}`);
@@ -260,8 +260,8 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
     handler: async (args) => {
       try {
         const configPath = args.global
-          ? join(homedir(), ".goddard", "config.ts")
-          : join(process.cwd(), "goddard.config.ts");
+          ? getGlobalConfigPath()
+          : getLocalConfigPath();
 
         if (!(await fileExists(configPath))) {
           io.stderr(`Could not find config at ${configPath}`);
@@ -348,29 +348,6 @@ async function resolveRepoRef(inputRepo?: string): Promise<string> {
   }
 
   return inferred;
-}
-
-async function resolveLoopConfigPath(): Promise<string | null> {
-  const localPath = join(process.cwd(), "goddard.config.ts");
-  if (await fileExists(localPath)) {
-    return localPath;
-  }
-
-  const globalPath = join(homedir(), ".goddard", "config.ts");
-  if (await fileExists(globalPath)) {
-    return globalPath;
-  }
-
-  return null;
-}
-
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await access(path, fsConstants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function renderSystemdEnvironment(environment?: Record<string, string | undefined>): string {
