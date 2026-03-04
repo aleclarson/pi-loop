@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  * Default system prompt for the autonomous agent loop (`goddard loop run`).
  *
  * Configures pi-coding-agent as a senior autonomous engineer that follows
- * Architectural Alignment, Version Stability, and Git Town workflow rules.
+ * Architectural Alignment, Version Stability, and standard workflow rules.
  * Project-level AGENTS.md files take precedence over this default.
  */
 export const LOOP_SYSTEM_PROMPT: string = readFileSync(
