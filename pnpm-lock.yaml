@@ -26,9 +26,9 @@ importers:
 
   backend:
     dependencies:
-      '@goddard-ai/shared':
+      '@goddard-ai/schema':
         specifier: workspace:^
-        version: link:../shared
+        version: link:../schema
       '@libsql/client':
         specifier: ^0.17.0
         version: 0.17.0
@@ -73,11 +73,17 @@ importers:
         specifier: ^5.0.5
         version: 5.0.5
 
+  schema:
+    dependencies:
+      zod:
+        specifier: ^3.22.4
+        version: 3.25.76
+
   sdk:
     dependencies:
-      '@goddard-ai/shared':
+      '@goddard-ai/schema':
         specifier: workspace:^
-        version: link:../shared
+        version: link:../schema
       '@libsql/client':
         specifier: ^0.17.0
         version: 0.17.0
@@ -88,12 +94,6 @@ importers:
       drizzle-kit:
         specifier: ^0.31.9
         version: 0.31.9
-
-  shared:
-    dependencies:
-      zod:
-        specifier: ^3.22.4
-        version: 3.25.76
 
 packages:
 

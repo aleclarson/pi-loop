@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import type { RepoEvent } from "@goddard-ai/shared";
+import type { RepoEvent } from "@goddard-ai/schema";
 
 export class RepoStream extends DurableObject {
   #sessions = new Set<WebSocket>();

@@ -13,7 +13,7 @@ import {
   DeviceFlowCompleteSchema,
   CreatePrInputSchema,
   GitHubWebhookInputSchema
-} from "@goddard-ai/shared";
+} from "@goddard-ai/schema";
 import { WebSocketServer, type WebSocket } from "ws";
 import { type BackendControlPlane, HttpError, assertRepo } from "./control-plane.ts";
 

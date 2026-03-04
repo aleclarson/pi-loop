@@ -12,7 +12,7 @@
     "test": "node --import tsx --test"
   },
   "dependencies": {
-    "@goddard-ai/shared": "workspace:^",
+    "@goddard-ai/schema": "workspace:^",
     "@libsql/client": "^0.17.0",
     "drizzle-orm": "^0.45.1"
   },
