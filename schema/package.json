@@ -12,6 +12,7 @@
     "test": "node --import tsx --test"
   },
   "dependencies": {
-    "zod": "^3.22.4"
+    "rouzer": "^1.4.0",
+    "zod": "^4.3.6"
   }
 }

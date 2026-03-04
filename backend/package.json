@@ -9,7 +9,9 @@
     "@libsql/client": "^0.17.0",
     "alchemy": "^0.87.0",
     "drizzle-orm": "1.0.0-beta.15-859cf75",
-    "ws": "^8.18.0"
+    "rouzer": "^1.4.0",
+    "ws": "^8.18.0",
+    "zod": "^4.1.11"
   },
   "exports": {
     ".": "./src/index.ts"

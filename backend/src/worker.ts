@@ -1,11 +1,14 @@
 import { createClient } from "@libsql/client/web";
 import { TursoBackendControlPlane } from "./persistence.ts";
 import { HttpError, assertRepo } from "./control-plane.ts";
-import type {
-  CreatePrInput,
-  DeviceFlowComplete,
-  DeviceFlowStart,
-  GitHubWebhookInput
+import {
+  authDeviceCompleteRoute,
+  authDeviceStartRoute,
+  authSessionRoute,
+  githubWebhookRoute,
+  prCreateRoute,
+  repoStreamRoute,
+  routePath
 } from "@goddard-ai/schema";
 import { RepoStream } from "./objects/RepoStream.ts";
 
@@ -16,6 +19,13 @@ export interface Env {
   TURSO_DB_AUTH_TOKEN: string;
   REPO_STREAM: DurableObjectNamespace;
 }
+
+const AUTH_DEVICE_START_PATH = routePath(authDeviceStartRoute);
+const AUTH_DEVICE_COMPLETE_PATH = routePath(authDeviceCompleteRoute);
+const AUTH_SESSION_PATH = routePath(authSessionRoute);
+const PR_CREATE_PATH = routePath(prCreateRoute);
+const GITHUB_WEBHOOK_PATH = routePath(githubWebhookRoute);
+const REPO_STREAM_PATH = routePath(repoStreamRoute);
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -29,24 +39,28 @@ export default {
     const controlPlane = new TursoBackendControlPlane(client as any);
 
     try {
-      if (method === "POST" && url.pathname === "/auth/device/start") {
-        const body = (await request.json()) as DeviceFlowStart;
+      if (method === "POST" && url.pathname === AUTH_DEVICE_START_PATH) {
+        const body = authDeviceStartRoute.POST({ body: await request.json() }).args.body;
         return writeJson(200, await controlPlane.startDeviceFlow(body));
       }
 
-      if (method === "POST" && url.pathname === "/auth/device/complete") {
-        const body = (await request.json()) as DeviceFlowComplete;
+      if (method === "POST" && url.pathname === AUTH_DEVICE_COMPLETE_PATH) {
+        const body = authDeviceCompleteRoute.POST({ body: await request.json() }).args.body;
         return writeJson(200, await controlPlane.completeDeviceFlow(body));
       }
 
-      if (method === "GET" && url.pathname === "/auth/session") {
+      if (method === "GET" && url.pathname === AUTH_SESSION_PATH) {
         const token = readBearerToken(request);
+        authSessionRoute.GET({ headers: { authorization: `Bearer ${token}` } });
         return writeJson(200, await controlPlane.getSession(token));
       }
 
-      if (method === "POST" && url.pathname === "/pr/create") {
+      if (method === "POST" && url.pathname === PR_CREATE_PATH) {
         const token = readBearerToken(request);
-        const body = (await request.json()) as CreatePrInput;
+        const body = prCreateRoute.POST({
+          headers: { authorization: `Bearer ${token}` },
+          body: await request.json()
+        }).args.body;
         const pr = await controlPlane.createPr(token, body);
 
         // Broadcast to Durable Object
@@ -63,8 +77,8 @@ export default {
         return writeJson(200, pr);
       }
 
-      if (method === "POST" && url.pathname === "/webhooks/github") {
-        const body = (await request.json()) as GitHubWebhookInput;
+      if (method === "POST" && url.pathname === GITHUB_WEBHOOK_PATH) {
+        const body = githubWebhookRoute.POST({ body: await request.json() }).args.body;
         const event = await controlPlane.handleGitHubWebhook(body);
 
         // Broadcast to Durable Object
@@ -73,10 +87,16 @@ export default {
         return writeJson(200, event);
       }
 
-      if (url.pathname === "/stream") {
-        const owner = url.searchParams.get("owner") ?? "";
-        const repo = url.searchParams.get("repo") ?? "";
-        const token = url.searchParams.get("token") ?? "";
+      if (url.pathname === REPO_STREAM_PATH) {
+        const streamRequest = repoStreamRoute.GET({
+          query: {
+            owner: url.searchParams.get("owner") ?? "",
+            repo: url.searchParams.get("repo") ?? "",
+            token: url.searchParams.get("token") ?? ""
+          }
+        });
+        const { owner, repo, token } = streamRequest.args.query;
+
         assertRepo(owner, repo);
         await controlPlane.getSession(token);
 

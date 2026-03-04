@@ -9,10 +9,13 @@ import {
   GitHubWebhookInput,
   PullRequestRecord,
   RepoEvent,
-  DeviceFlowStartSchema,
-  DeviceFlowCompleteSchema,
-  CreatePrInputSchema,
-  GitHubWebhookInputSchema
+  authDeviceStartRoute,
+  authDeviceCompleteRoute,
+  authSessionRoute,
+  prCreateRoute,
+  githubWebhookRoute,
+  repoStreamRoute,
+  routePath
 } from "@goddard-ai/schema";
 import { WebSocketServer, type WebSocket } from "ws";
 import { type BackendControlPlane, HttpError, assertRepo } from "./control-plane.ts";
@@ -24,6 +27,13 @@ const DEVICE_FLOW_EXPIRES_IN_SECONDS = 900;
 const DEVICE_FLOW_INTERVAL_SECONDS = 5;
 const AUTH_SESSION_TTL_MS = 1000 * 60 * 60 * 24;
 const MAX_JSON_BODY_BYTES = 1024 * 1024;
+
+const AUTH_DEVICE_START_PATH = routePath(authDeviceStartRoute);
+const AUTH_DEVICE_COMPLETE_PATH = routePath(authDeviceCompleteRoute);
+const AUTH_SESSION_PATH = routePath(authSessionRoute);
+const PR_CREATE_PATH = routePath(prCreateRoute);
+const GITHUB_WEBHOOK_PATH = routePath(githubWebhookRoute);
+const REPO_STREAM_PATH = routePath(repoStreamRoute);
 
 type StartServerOptions = {
   port?: number;
@@ -227,15 +237,21 @@ export async function startBackendServer(
 
   httpServer.on("upgrade", (request, socket, head) => {
     const requestUrl = new URL(request.url ?? "/", `http://${request.headers.host}`);
-    if (requestUrl.pathname !== "/stream") {
+    if (requestUrl.pathname !== REPO_STREAM_PATH) {
       socket.destroy();
       return;
     }
 
     try {
-      const owner = requestUrl.searchParams.get("owner") ?? "";
-      const repo = requestUrl.searchParams.get("repo") ?? "";
-      const token = requestUrl.searchParams.get("token") ?? "";
+      const streamRequest = repoStreamRoute.GET({
+        query: {
+          owner: requestUrl.searchParams.get("owner") ?? "",
+          repo: requestUrl.searchParams.get("repo") ?? "",
+          token: requestUrl.searchParams.get("token") ?? ""
+        }
+      });
+
+      const { owner, repo, token } = streamRequest.args.query;
       assertRepo(owner, repo);
       controlPlane.getSession(token);
 
@@ -280,33 +296,37 @@ async function handleHttpRequest(
   const requestUrl = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
   try {
-    if (method === "POST" && requestUrl.pathname === "/auth/device/start") {
-      const body = await readJson<unknown>(req);
-      const parsed = DeviceFlowStartSchema.parse(body);
+    if (method === "POST" && requestUrl.pathname === AUTH_DEVICE_START_PATH) {
+      const body = await readJson<any>(req);
+      const parsed = authDeviceStartRoute.POST({ body }).args.body;
       return writeJson(res, 200, await controlPlane.startDeviceFlow(parsed));
     }
 
-    if (method === "POST" && requestUrl.pathname === "/auth/device/complete") {
-      const body = await readJson<unknown>(req);
-      const parsed = DeviceFlowCompleteSchema.parse(body);
+    if (method === "POST" && requestUrl.pathname === AUTH_DEVICE_COMPLETE_PATH) {
+      const body = await readJson<any>(req);
+      const parsed = authDeviceCompleteRoute.POST({ body }).args.body;
       return writeJson(res, 200, await controlPlane.completeDeviceFlow(parsed));
     }
 
-    if (method === "GET" && requestUrl.pathname === "/auth/session") {
+    if (method === "GET" && requestUrl.pathname === AUTH_SESSION_PATH) {
       const token = readBearerToken(req);
+      authSessionRoute.GET({ headers: { authorization: `Bearer ${token}` } });
       return writeJson(res, 200, await controlPlane.getSession(token));
     }
 
-    if (method === "POST" && requestUrl.pathname === "/pr/create") {
+    if (method === "POST" && requestUrl.pathname === PR_CREATE_PATH) {
       const token = readBearerToken(req);
-      const body = await readJson<unknown>(req);
-      const parsed = CreatePrInputSchema.parse(body);
+      const body = await readJson<any>(req);
+      const parsed = prCreateRoute.POST({
+        headers: { authorization: `Bearer ${token}` },
+        body
+      }).args.body;
       return writeJson(res, 200, await controlPlane.createPr(token, parsed));
     }
 
-    if (method === "POST" && requestUrl.pathname === "/webhooks/github") {
-      const body = await readJson<unknown>(req);
-      const parsed = GitHubWebhookInputSchema.parse(body);
+    if (method === "POST" && requestUrl.pathname === GITHUB_WEBHOOK_PATH) {
+      const body = await readJson<any>(req);
+      const parsed = githubWebhookRoute.POST({ body }).args.body;
       return writeJson(res, 200, await controlPlane.handleGitHubWebhook(parsed));
     }
   } catch (error) {
