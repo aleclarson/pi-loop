@@ -43,16 +43,6 @@ pnpm --dir=cmd goddard loop generate-systemd
 
 ---
 
-## Recommended Workflow: PR Stacking
-
-While Goddard's agents can adapt to various version control strategies, we strongly recommend a **PR Stacking** workflow (often facilitated by tools like [Git Town](https://www.git-town.com/) or Graphite).
-
-*   **Smaller, Atomic PRs:** Stacked PRs naturally encourage smaller units of work, making code review faster and less error-prone.
-*   **Agent Compatibility:** Autonomous loops perform better when they have clear boundaries. Giving an agent a targeted objective on a branch stacked on top of an existing, unmerged feature keeps its "blast radius" contained and its context focused.
-*   **Configuration:** If you use tools like `git-town`, you can add specific instructions to your project's `AGENTS.md` file (via `goddard agents init`) to teach the `pi-coding-agent` your exact stacking commands and conventions.
-
----
-
 ## 2. Production Deployment
 
 Goddard is designed to be deployed as a globally distributed control plane.

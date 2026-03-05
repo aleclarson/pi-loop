@@ -366,11 +366,9 @@ function quoteSystemdValue(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
 }
 
-const DEFAULT_LOOP_CONFIG_TEMPLATE = `import { Models, defineConfig } from "@goddard-ai/config";
-
-export default defineConfig({
+const DEFAULT_LOOP_CONFIG_TEMPLATE = `import { defineConfig } from \"@goddard-ai/config\";\n\nexport default defineConfig({
   agent: {
-    model: Models.Anthropic.ClaudeSonnet45,
+    model: "anthropic/claude-sonnet-4-5",
     projectDir: "./",
     thinkingLevel: "low"
   },

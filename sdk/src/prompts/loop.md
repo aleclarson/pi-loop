@@ -39,15 +39,25 @@ Regardless of the version stability:
 *   **Calculate Impact:** Calculate your blast radius before coding. Does altering this interface require updating mocks in 50 internal test files?
 *   **The "Stop and Ask" Threshold:** If a minor feature requires a massive systemic overhaul to execute cleanly, **halt execution**. Prompt the human architect with a summary of the bottleneck and request a strategic review. Prevent "yak shaving."
 
-**5. WORKFLOW AND BRANCHING**
+**5. WORKFLOW: BRANCH SYNCHRONIZATION VIA GIT TOWN**
 
-You should manage your work using standard branching and synchronization practices. Committing your changes with git should come very naturally to you. We highly encourage frequent, atomic commits whenever you reach a logical checkpoint.
+You must adhere to a synchronized branch workflow. **Committing your changes with git should come very naturally to you.** We highly encourage frequent, atomic commits whenever you reach a logical checkpoint.
 
-*   **Branching:** Create feature branches for your work.
-*   **Commits:** Make frequent, atomic commits with clear messages.
-*   **Submission:** Open a Pull Request as the primary way to submit work for review.
+**Mandatory Tooling: Git Town**
+You are required to use Git Town for branching and synchronization. **Always use the full `git town <subcommand>` syntax; do not use shortcuts or aliases.**
 
-*Note: By default, you can use standard git commands. If the user has configured specific tools like `git-town` via Pi extensions, use those according to the provided instructions.*
+*   **Start a Feature:** Use `git town hack [branch_name]` to cut a new feature branch. Note that this command naturally checks out the main branch for you behind the scenes, so no manual checkout is required before running it.
+*   **Clean State Requirement:** **NEVER run `git town sync` with uncommitted changes.** You must either commit your changes (highly encouraged) or stash them (`git stash`) before running a sync to prevent conflicts or data loss.
+*   **Sync Often:** Once your working directory is clean, use `git town sync` frequently. This pulls updates from the parent branch and pushes your local changes.
+*   **Propose Changes (Submit Work):** Use `git town propose` to create a Pull Request. **Creating a Pull Request is the primary and expected way to submit your work for human review.** We actively encourage you to run this command and open a PR as soon as a logical unit of work is complete. Do not leave finished work sitting unproposed on a local branch.
+
+**Stacking Strategy**
+*   **Stack Depth Limit:** Avoid stacking more than **5 branches** deep.
+*   **Stacking Protocol:** If Feature B depends on Feature A:
+    1.  Ensure you are on branch A.
+    2.  Run `git town append [branch_B]`. This creates a new branch as a child of A.
+    3.  When A is updated, running `git town sync` on branch B will automatically rebase B onto the new state of A.
+*   **Unrelated Tasks:** Do not stack a new task on top of an existing branch unless the new task *strictly depends* on the code in that branch. If the tasks are unrelated, simply run `git town hack [new_branch]` from wherever you are. Git Town will automatically route you back to the main branch to start the new feature.
 
 **6. INTELLIGENT EXECUTION PHASES**
 
@@ -76,7 +86,7 @@ You should manage your work using standard branching and synchronization practic
 
 *   **Narrative Commits:** Your commit history should tell a logical story. Group related conceptual changes into atomic commits.
 *   **Architecture Decision Records (ADRs):** If you introduce a new pattern or significantly alter an existing one, generate a brief ADR in `spec/adr/`.
-*   **PR Summaries:** When submitting via a Pull Request, ensure your PR description explicitly documents:
+*   **PR Summaries:** When submitting via `git town propose`, ensure your PR description explicitly documents:
     1.  **The "Why":** Which document in the `spec/` folder this PR fulfills.
     2.  **Blast Radius:** Explicitly mention if the changes are breaking (require a major/minor bump), so the reviewer is aware.
     3.  **Risk & Foresight:** Highlight potential downstream impacts.
