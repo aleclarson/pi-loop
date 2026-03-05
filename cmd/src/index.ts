@@ -4,6 +4,7 @@ import { FileTokenStorage, getLocalConfigPath, getGlobalConfigPath, fileExists, 
 import { spawnSync } from "node:child_process";
 import { access, mkdir, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
+import * as p from "@clack/prompts";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { createJiti } from "@mariozechner/jiti";
@@ -35,6 +36,15 @@ export type CliDeps = {
    */
   spawnPi?: (args: string[]) => number;
   createLoopRuntime?: (config: GoddardLoopConfig) => { start: () => Promise<void> };
+  /**
+   * Injectable git operation runner for testing.
+   */
+  execGit?: (command: string, args: string[]) => { status: number | null; stdout: string; stderr: string };
+  /**
+   * Injectable prompts for testing interactiveness.
+   */
+  promptCommitMessage?: () => Promise<string | symbol>;
+  promptPushBranch?: () => Promise<boolean | symbol>;
 };
 
 export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDeps = {}): Promise<number> {
@@ -176,9 +186,119 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
     args: {},
     handler: async () => {
       try {
+        const execGit = deps.execGit ?? ((cmd: string, args: string[]) => {
+          const res = spawnSync("git", [cmd, ...args], { encoding: "utf-8" });
+          if (res.error) throw res.error;
+          return { status: res.status, stdout: res.stdout, stderr: res.stderr };
+        });
+
+        const statusRes = execGit("status", ["--porcelain"]);
+        const lines = statusRes.stdout.split('\n').filter(Boolean);
+
+        const hasStaged = lines.some(line => {
+          const status = line.substring(0, 2);
+          return status[0] !== ' ' && status[0] !== '?';
+        });
+
+        if (hasStaged) {
+          io.stderr("Error: You have staged changes. Please commit or stash them first.");
+          return 1;
+        }
+
+        let agentsPath = join(process.cwd(), "AGENTS.md");
+        let currentDir = process.cwd();
+        while (true) {
+          const candidatePath = join(currentDir, "AGENTS.md");
+          try {
+            await access(candidatePath, fsConstants.F_OK);
+            agentsPath = candidatePath;
+            break;
+          } catch {
+            const nextDir = dirname(currentDir);
+            if (nextDir === currentDir) break;
+            currentDir = nextDir;
+          }
+        }
+
+        const agentsStatusRes = execGit("status", ["--porcelain", agentsPath]);
+        if (agentsStatusRes.stdout.trim() !== "") {
+          io.stderr("Error: AGENTS.md has uncommitted changes. Please commit or stash them first.");
+          return 1;
+        }
+
         const sdk = getSdk();
-        const agentsPath = await sdk.agents.appendSpecInstructions(process.cwd());
+        await sdk.agents.appendSpecInstructions(process.cwd());
         io.stdout(`Updated agents configuration at ${agentsPath}`);
+
+        try {
+          const diffRes = execGit("diff", ["--", agentsPath]);
+          if (diffRes.stdout && diffRes.stdout.trim() !== "") {
+            io.stdout(diffRes.stdout);
+          }
+        } catch (e) {
+          // Ignore diff errors
+        }
+
+        const promptCommitMessage = deps.promptCommitMessage ?? (async () => {
+          return p.text({
+            message: "Commit message (clear the text to skip commit)",
+            initialValue: "Configure Goddard agent specifications",
+          });
+        });
+
+        const commitMessage = await promptCommitMessage();
+
+        if (p.isCancel(commitMessage)) {
+          io.stdout("Commit skipped.");
+          return 0;
+        }
+
+        const msg = (commitMessage as string).trim();
+        if (!msg) {
+          io.stdout("Commit skipped.");
+          return 0;
+        }
+
+        try {
+          const addRes = execGit("add", [agentsPath]);
+          if (addRes.status !== 0) throw new Error(addRes.stderr);
+          const commitRes = execGit("commit", ["-m", msg]);
+          if (commitRes.status !== 0) throw new Error(commitRes.stderr);
+          io.stdout(`Committed changes: ${msg}`);
+        } catch (e) {
+          io.stderr("Failed to commit changes.");
+          io.stderr(e instanceof Error ? e.message : String(e));
+          return 1;
+        }
+
+        const promptPushBranch = deps.promptPushBranch ?? (async () => {
+          return p.confirm({
+            message: "Would you like to push the branch?",
+            initialValue: true,
+          });
+        });
+
+        const shouldPush = await promptPushBranch();
+
+        if (p.isCancel(shouldPush)) {
+          io.stdout("Push skipped.");
+          return 0;
+        }
+
+        if (shouldPush) {
+          try {
+            const pushRes = execGit("push", []);
+            if (pushRes.status !== 0) throw new Error(pushRes.stderr);
+            io.stdout("Pushed changes successfully.");
+          } catch (e) {
+            io.stderr("Failed to push changes.");
+            io.stderr(e instanceof Error ? e.message : String(e));
+            return 1;
+          }
+        } else {
+          io.stdout("Push skipped.");
+        }
+
         return 0;
       } catch (e) {
         io.stderr(e instanceof Error ? e.message : String(e));
