@@ -159,6 +159,22 @@ export class TursoBackendControlPlane implements BackendControlPlane {
     assertRepo(event.owner, event.repo);
 
     const createdAt = new Date().toISOString();
+
+    if (event.type === "pull_request") {
+      if (event.action === "closed" && event.merged) {
+        return {
+          type: "proposal.merged",
+          owner: event.owner,
+          repo: event.repo,
+          prNumber: event.prNumber,
+          author: event.author,
+          createdAt
+        };
+      } else {
+        throw new HttpError(400, "Unsupported pull_request action");
+      }
+    }
+
     const mapped: RepoEvent =
       event.type === "issue_comment"
         ? {
@@ -184,6 +200,38 @@ export class TursoBackendControlPlane implements BackendControlPlane {
           };
 
     return mapped;
+  }
+
+  async createPiSession(owner: string, repo: string, prNumber: number) {
+    assertRepo(owner, repo);
+    const createdAt = new Date().toISOString();
+
+    const [inserted] = await this.#db
+      .insert(schema.piSessions)
+      .values({
+        repoOwner: owner,
+        repoName: repo,
+        prNumber,
+        status: "active",
+        createdAt
+      })
+      .returning();
+
+    return inserted;
+  }
+
+  async updatePiSession(id: number, status: string) {
+    const [updated] = await this.#db
+      .update(schema.piSessions)
+      .set({ status })
+      .where(eq(schema.piSessions.id, id))
+      .returning();
+
+    if (!updated) {
+      throw new HttpError(404, "Session not found");
+    }
+
+    return updated;
   }
 }
 

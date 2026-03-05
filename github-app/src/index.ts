@@ -90,6 +90,37 @@ export class GoddardGitHubApp {
 
       this.app.webhooks.on("pull_request", async ({ octokit, payload }) => {
         console.log(`Received pull_request event: ${payload.action} for PR #${payload.pull_request.number}`);
+
+        if (payload.action === "closed" && payload.pull_request.merged) {
+          try {
+            const files = await octokit.rest.pulls.listFiles({
+              owner: payload.repository.owner.login,
+              repo: payload.repository.name,
+              pull_number: payload.pull_request.number
+            });
+
+            const touchesProposals = files.data.some(
+              (file) => file.filename.startsWith("proposals/") || file.filename.startsWith("spec/proposals/")
+            );
+
+            if (touchesProposals) {
+              const input: GitHubWebhookInput = {
+                type: "pull_request",
+                action: payload.action,
+                merged: true,
+                owner: payload.repository.owner.login,
+                repo: payload.repository.name,
+                prNumber: payload.pull_request.number,
+                author: payload.pull_request.user.login,
+                base: payload.pull_request.base.ref
+              };
+
+              await this.handleWebhook(input);
+            }
+          } catch (error) {
+            console.error("Failed to process closed PR for proposals:", error);
+          }
+        }
       });
     }
   }

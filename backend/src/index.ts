@@ -164,6 +164,24 @@ export class InMemoryBackendControlPlane implements BackendControlPlane {
     assertRepo(event.owner, event.repo);
 
     const createdAt = new Date().toISOString();
+
+    if (event.type === "pull_request") {
+      if (event.action === "closed" && event.merged) {
+        const mapped: RepoEvent = {
+          type: "proposal.merged",
+          owner: event.owner,
+          repo: event.repo,
+          prNumber: event.prNumber,
+          author: event.author,
+          createdAt
+        };
+        this.broadcast(mapped);
+        return mapped;
+      } else {
+        throw new HttpError(400, "Unsupported pull_request action");
+      }
+    }
+
     const mapped: RepoEvent =
       event.type === "issue_comment"
         ? {
@@ -190,6 +208,28 @@ export class InMemoryBackendControlPlane implements BackendControlPlane {
 
     this.broadcast(mapped);
     return mapped;
+  }
+
+  createPiSession(owner: string, repo: string, prNumber: number) {
+    return {
+      id: 1,
+      repoOwner: owner,
+      repoName: repo,
+      prNumber,
+      status: "active",
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  updatePiSession(id: number, status: string) {
+    return {
+      id,
+      repoOwner: "owner",
+      repoName: "repo",
+      prNumber: 1,
+      status,
+      createdAt: new Date().toISOString()
+    };
   }
 
   addStreamSocket(repoKey: string, socket: unknown): void {

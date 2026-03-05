@@ -260,6 +260,14 @@ export const configSchema = z
         environment: z.record(z.string().optional()).optional(),
       })
       .optional(),
+    roadmap: z
+      .object({
+        /** The repository that tracks the roadmap. */
+        repository: z.string().optional(),
+        /** The branch that tracking proposals and roadmap. */
+        branch: z.string().optional(),
+      })
+      .optional(),
   })
   .superRefine((config, ctx) => {
     if (

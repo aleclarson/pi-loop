@@ -5,7 +5,9 @@ import { spawnSync } from "node:child_process";
 import { access, mkdir, writeFile } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
+import { cp } from "node:fs/promises";
 import { createJiti } from "@mariozechner/jiti";
 import { createLoop } from "./loop/index.ts";
 import type { GoddardLoopConfig } from "./loop/index.ts";
@@ -162,6 +164,61 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
     },
     handler: async (args) => {
       try {
+        let branchName = "roadmap";
+
+        try {
+          const configPath = await resolveLoopConfigPath();
+          if (configPath) {
+            const jiti = createJiti(process.cwd());
+            const module = await jiti.import(configPath);
+            const config = ((module as any).default ?? module) as GoddardLoopConfig;
+            if (config?.roadmap?.branch) {
+              branchName = config.roadmap.branch;
+            }
+          }
+        } catch (e) {
+          // ignore config load errors
+        }
+
+        const currentBranchResult = spawnSync("git", ["branch", "--show-current"], { encoding: "utf8" });
+        const currentBranch = currentBranchResult.stdout.trim();
+
+        if (currentBranch !== branchName) {
+          io.stdout(`Switching to roadmap branch: ${branchName}`);
+          let checkoutResult = spawnSync("git", ["checkout", branchName], { stdio: "inherit" });
+          if (checkoutResult.status !== 0) {
+            checkoutResult = spawnSync("git", ["checkout", "-b", branchName], { stdio: "inherit" });
+            if (checkoutResult.status !== 0) {
+              io.stderr(`Failed to switch to or create roadmap branch: ${branchName}`);
+              return 1;
+            }
+          }
+
+          if (!(await fileExists(join(process.cwd(), "proposals")))) {
+            io.stdout(`Populating roadmap template in ${branchName}...`);
+            let resolvedTemplatePath = join(process.cwd(), "core/templates/roadmap");
+            if (!(await fileExists(join(resolvedTemplatePath, "README.md")))) {
+              resolvedTemplatePath = join(dirname(fileURLToPath(import.meta.url)), "../../core/templates/roadmap");
+            }
+
+            try {
+              await cp(resolvedTemplatePath, process.cwd(), { recursive: true, force: false });
+            } catch (e) {
+            }
+
+            try {
+              let workflowTemplatePath = join(process.cwd(), "core/templates/workflows/sync-spec-branch.yml");
+              if (!(await fileExists(workflowTemplatePath))) {
+                workflowTemplatePath = join(dirname(fileURLToPath(import.meta.url)), "../../core/templates/workflows/sync-spec-branch.yml");
+              }
+              const workflowsDir = join(process.cwd(), ".github/workflows");
+              await mkdir(workflowsDir, { recursive: true });
+              await cp(workflowTemplatePath, join(workflowsDir, "sync-spec-branch.yml"), { force: false });
+            } catch (e) {
+            }
+          }
+        }
+
         const exitCode = spawnPi(["--system-prompt", PROPOSE_SYSTEM_PROMPT, ...args.prompt]);
         return exitCode;
       } catch (e) {
@@ -235,13 +292,13 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
 
         const jiti = createJiti(process.cwd());
         const module = await jiti.import(configPath);
-        const config = (module as any).default ?? module;
+        const config = ((module as any).default ?? module) as GoddardLoopConfig;
         if (!config) {
           io.stderr("Config file must export a default configuration object.");
           return 1;
         }
 
-        const loop = createLoopRuntime(config as GoddardLoopConfig);
+        const loop = createLoopRuntime(config);
         await loop.start();
         io.stdout("Loop completed after DONE signal.");
         return 0;
@@ -259,11 +316,9 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
     },
     handler: async (args) => {
       try {
-        const configPath = args.global
-          ? getGlobalConfigPath()
-          : getLocalConfigPath();
+        const configPath = await resolveLoopConfigPath();
 
-        if (!(await fileExists(configPath))) {
+        if (!configPath || !(await fileExists(configPath))) {
           io.stderr(`Could not find config at ${configPath}`);
           return 1;
         }
@@ -394,6 +449,9 @@ export default defineConfig({
   },
   metrics: {
     enableLogging: true
+  },
+  roadmap: {
+    branch: "roadmap"
   }
 });
 `;

@@ -102,6 +102,14 @@ export const RepoEventSchema = z.discriminatedUnion("type", [
     title: z.string(),
     author: z.string(),
     createdAt: z.string(),
+  }),
+  z.object({
+    type: z.literal("proposal.merged"),
+    owner: z.string(),
+    repo: z.string(),
+    prNumber: z.number(),
+    author: z.string(),
+    createdAt: z.string(),
   })
 ]);
 export type RepoEvent = z.infer<typeof RepoEventSchema>;
@@ -128,6 +136,33 @@ export const GitHubWebhookInputSchema = z.discriminatedUnion("type", [
     author: z.string(),
     state: z.enum(["approved", "changes_requested", "commented"]),
     body: z.string(),
+  }),
+  z.object({
+    type: z.literal("pull_request"),
+    action: z.string(),
+    merged: z.boolean(),
+    owner: z.string(),
+    repo: z.string(),
+    prNumber: z.number(),
+    author: z.string(),
+    base: z.string(),
   })
 ]);
 export type GitHubWebhookInput = z.infer<typeof GitHubWebhookInputSchema>;
+
+export const CreatePiSessionInputSchema = z.object({
+  owner: z.string(),
+  repo: z.string(),
+  prNumber: z.number(),
+});
+export type CreatePiSessionInput = z.infer<typeof CreatePiSessionInputSchema>;
+
+export const PiSessionRecordSchema = z.object({
+  id: z.number(),
+  repoOwner: z.string(),
+  repoName: z.string(),
+  prNumber: z.number(),
+  status: z.string(),
+  createdAt: z.string(),
+});
+export type PiSessionRecord = z.infer<typeof PiSessionRecordSchema>;

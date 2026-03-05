@@ -12,7 +12,7 @@ export type DaemonIo = {
 type SdkClient = ReturnType<typeof createSdk>;
 
 type OneShotInput = {
-  event: Extract<RepoEvent, { type: "comment" | "review" }>;
+  event: Extract<RepoEvent, { type: "comment" | "review" | "proposal.merged" }>;
   prompt: string;
   projectDir: string;
   piBin: string;
@@ -54,7 +54,7 @@ export async function runDaemonCli(
 
         subscription.on("event", async (payload) => {
           const event = payload as RepoEvent;
-          if (!isFeedbackEvent(event)) {
+          if (!isTriggerEvent(event)) {
             return;
           }
 
@@ -62,6 +62,11 @@ export async function runDaemonCli(
           const activeSession = runningPrs.get(event.prNumber);
 
           if (activeSession) {
+            if (event.type === "proposal.merged") {
+              io.stdout(`Warning: A session is already active for PR #${event.prNumber}. Cannot inject a proposal merge event into an existing session.`);
+              return;
+            }
+
             io.stdout(`Injecting new feedback into existing session for PR #${event.prNumber}.`);
             try {
               if (activeSession.isTmux) {
@@ -96,6 +101,19 @@ export async function runDaemonCli(
             }
 
             io.stdout(`Launching one-shot pi session for ${event.type} on PR #${event.prNumber}...`);
+
+            let sessionId: number | undefined;
+            try {
+              const sessionRecord = await sdk.piSessions.create({
+                owner: event.owner,
+                repo: event.repo,
+                prNumber: event.prNumber
+              });
+              sessionId = sessionRecord.id;
+            } catch (err) {
+              io.stderr(`Failed to record active pi session in backend: ${err}`);
+            }
+
             const exitCode = await runOneShot({ 
               event, 
               prompt, 
@@ -107,6 +125,18 @@ export async function runDaemonCli(
                 if (session) session.ptyProcess = ptyProcess;
               }
             });
+
+            if (sessionId !== undefined) {
+              try {
+                await sdk.piSessions.update({
+                  id: sessionId,
+                  status: "completed"
+                });
+              } catch (err) {
+                io.stderr(`Failed to mark active pi session as completed in backend: ${err}`);
+              }
+            }
+
             io.stdout(`One-shot pi session finished for PR #${event.prNumber} (exit ${exitCode}).`);
           } catch (error) {
             io.stderr(error instanceof Error ? error.message : String(error));
@@ -252,11 +282,19 @@ async function defaultWaitForShutdown(close: () => void): Promise<void> {
   });
 }
 
-function isFeedbackEvent(event: RepoEvent): event is Extract<RepoEvent, { type: "comment" | "review" }> {
-  return event.type === "comment" || event.type === "review";
+function isTriggerEvent(event: RepoEvent): event is Extract<RepoEvent, { type: "comment" | "review" | "proposal.merged" }> {
+  return event.type === "comment" || event.type === "review" || event.type === "proposal.merged";
 }
 
-function buildPrompt(event: Extract<RepoEvent, { type: "comment" | "review" }>): string {
+function buildPrompt(event: Extract<RepoEvent, { type: "comment" | "review" | "proposal.merged" }>): string {
+  if (event.type === "proposal.merged") {
+    return [
+      `You are responding to a merged roadmap proposal for PR #${event.prNumber}.`,
+      `Implement the changes described in the proposal.`,
+      "Do not switch to another PR; stay scoped to this event's PR."
+    ].join("\n\n");
+  }
+
   const feedback =
     event.type === "comment"
       ? `Comment from @${event.author}:\n${event.body}`
