@@ -22,7 +22,8 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "pnpm -r run lint",
-    "test": "pnpm -r run test",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "check": "pnpm run typecheck && pnpm run test"
   },
   "pnpm": {

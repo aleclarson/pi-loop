@@ -21,7 +21,7 @@
   "scripts": {
     "goddard": "node dist/cli.mjs",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test",
+    "test": "vitest run",
     "build": "tsdown"
   },
   "devDependencies": {

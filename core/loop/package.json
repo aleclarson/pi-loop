@@ -8,7 +8,7 @@
   },
   "scripts": {
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --loader ./../../tsx-raw-loader.mjs --test",
+    "test": "vitest run",
     "build": "tsdown"
   },
   "dependencies": {
