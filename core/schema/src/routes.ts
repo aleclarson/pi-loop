@@ -56,6 +56,19 @@ export const prCreateRoute = route("pr/create", {
   }
 });
 
+export const prReplyRoute = route("pr/reply", {
+  POST: {
+    headers: bearerHeaderSchema,
+    body: z.object({
+      owner: z.string(),
+      repo: z.string(),
+      prNumber: z.number(),
+      body: z.string()
+    }),
+    response: $type<{ success: boolean }>()
+  }
+});
+
 export const prManagedRoute = route("pr/managed", {
   GET: {
     headers: bearerHeaderSchema,
@@ -107,5 +120,6 @@ export type {
   CreatePrInput,
   DeviceFlowComplete,
   DeviceFlowStart,
-  GitHubWebhookInput
-};
+  GitHubWebhookInput,
+  ReplyPrInput
+} from "./types.ts";

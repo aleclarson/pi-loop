@@ -57,6 +57,12 @@ export const CreatePrInputSchema = RepoRefSchema.extend({
 });
 export type CreatePrInput = z.infer<typeof CreatePrInputSchema>;
 
+export const ReplyPrInputSchema = RepoRefSchema.extend({
+  prNumber: z.number(),
+  body: z.string(),
+});
+export type ReplyPrInput = z.infer<typeof ReplyPrInputSchema>;
+
 export const PullRequestRecordSchema = z.object({
   id: z.number(),
   number: z.number(),

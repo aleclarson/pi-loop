@@ -12,14 +12,18 @@ import type {
   RepoEvent
 } from "@goddard-ai/schema";
 import { eq, and, gt } from "drizzle-orm";
-import { type BackendControlPlane, HttpError, assertRepo } from "./control-plane.ts";
+import { type BackendControlPlane, HttpError, assertRepo, postPrCommentViaApp } from "./control-plane.ts";
 import { randomUUID } from "node:crypto";
+import type { Env } from "./env.ts";
 
 export class TursoBackendControlPlane implements BackendControlPlane {
   readonly #db: ReturnType<typeof drizzle<typeof schema>>;
 
-  constructor(client: Client) {
+  readonly #env?: Env;
+
+  constructor(client: Client, env?: Env) {
     this.#db = drizzle({ client, schema });
+    this.#env = env;
   }
 
   async startDeviceFlow(input: DeviceFlowStart = {}): Promise<DeviceFlowSession> {
@@ -131,6 +135,21 @@ export class TursoBackendControlPlane implements BackendControlPlane {
       .where(eq(schema.pullRequests.id, inserted.id));
 
     return { ...inserted, number: finalNumber, url: finalUrl, body: inserted.body ?? "" };
+  }
+
+  async replyToPr(token: string, input: { owner: string; repo: string; prNumber: number; body: string }, env?: Env): Promise<void> {
+    const session = await this.getSession(token);
+    assertRepo(input.owner, input.repo);
+    if (!input.body.trim()) {
+      throw new HttpError(400, "body is required");
+    }
+
+    const managed = await this.isManagedPr(input.owner, input.repo, input.prNumber, session.githubUsername);
+    if (!managed) {
+      throw new HttpError(403, "Cannot reply to a PR that is not managed by you");
+    }
+
+    await postPrCommentViaApp(env, input.owner, input.repo, input.prNumber, input.body);
   }
 
   async isManagedPr(owner: string, repo: string, prNumber: number, githubUsername: string): Promise<boolean> {

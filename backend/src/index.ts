@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createServer as createNodeServer } from "@hattip/adapter-node";
+import type { Env } from "./env.ts";
 import {
   type AuthSession,
   type CreatePrInput,
@@ -10,7 +11,7 @@ import {
   type PullRequestRecord,
   type RepoEvent
 } from "@goddard-ai/schema";
-import { type BackendControlPlane, HttpError, assertRepo } from "./control-plane.ts";
+import { type BackendControlPlane, HttpError, assertRepo, postPrCommentViaApp } from "./control-plane.ts";
 import { createBackendRouter } from "./router.ts";
 
 type SessionRecord = AuthSession & { expiresAt: number };
@@ -143,6 +144,21 @@ export class InMemoryBackendControlPlane implements BackendControlPlane {
     });
 
     return record;
+  }
+
+  async replyToPr(token: string, input: { owner: string; repo: string; prNumber: number; body: string }, env?: Env): Promise<void> {
+    const session = this.getSession(token);
+    assertRepo(input.owner, input.repo);
+    if (!input.body.trim()) {
+      throw new HttpError(400, "body is required");
+    }
+
+    const managed = this.isManagedPr(input.owner, input.repo, input.prNumber, session.githubUsername);
+    if (!managed) {
+      throw new HttpError(403, "Cannot reply to a PR that is not managed by you");
+    }
+
+    await postPrCommentViaApp(env, input.owner, input.repo, input.prNumber, input.body);
   }
 
   isManagedPr(owner: string, repo: string, prNumber: number, githubUsername: string): boolean {

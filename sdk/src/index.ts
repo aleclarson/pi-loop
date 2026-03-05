@@ -81,6 +81,7 @@ export class GoddardSdk {
   readonly pr: {
     create: (input: CreatePrInput) => Promise<PullRequestRecord>;
     isManaged: (input: RepoRef & { prNumber: number }) => Promise<boolean>;
+    reply: (input: RepoRef & { prNumber: number; body: string }) => Promise<{ success: boolean }>;
   };
 
   readonly stream: {
@@ -153,6 +154,17 @@ export class GoddardSdk {
           )
         );
         return result.managed;
+      },
+      reply: async (input) => {
+        const token = await this.#requireToken();
+        return this.#sendJson<{ success: boolean }>(
+          this.#rouzerClient.request(
+            routes.prReplyRoute.POST({
+              headers: { authorization: `Bearer ${token}` },
+              body: input
+            })
+          )
+        );
       }
     };
 

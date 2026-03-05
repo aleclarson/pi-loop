@@ -12,6 +12,7 @@ const stubControlPlane: BackendControlPlane = {
   getSession: notUsed,
   createPr: notUsed,
   isManagedPr: notUsed,
+  replyToPr: notUsed,
   handleGitHubWebhook: notUsed
 };
 
