@@ -5,7 +5,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runCli } from "../src/index.ts";
 
-test("loop init creates goddard.config.ts", async () => {
+import { mkdir } from "node:fs/promises";
+
+test("loop init creates .goddard/config.ts", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "goddard-loop-init-"));
   const previousCwd = process.cwd();
   process.chdir(cwd);
@@ -18,7 +20,7 @@ test("loop init creates goddard.config.ts", async () => {
     );
 
     assert.equal(code, 0);
-    const configPath = join(cwd, "goddard.config.ts");
+    const configPath = join(cwd, ".goddard", "config.ts");
     const config = await readFile(configPath, "utf-8");
     assert.match(config, /maxTokensPerCycle/);
     assert.ok(lines.some((line) => line.includes("Created configuration at")));
@@ -33,8 +35,9 @@ test("loop run loads config and executes loop runtime", async () => {
   process.chdir(cwd);
 
   try {
+    await mkdir(join(cwd, ".goddard"), { recursive: true });
     await writeFile(
-      join(cwd, "goddard.config.ts"),
+      join(cwd, ".goddard", "config.ts"),
       `export default {
   agent: { model: "provider/model", projectDir: "." },
   strategy: { nextPrompt: () => "DONE" },
@@ -69,8 +72,9 @@ test("loop generate-systemd creates goddard.service", async () => {
   process.chdir(cwd);
 
   try {
+    await mkdir(join(cwd, ".goddard"), { recursive: true });
     await writeFile(
-      join(cwd, "goddard.config.ts"),
+      join(cwd, ".goddard", "config.ts"),
       `export default {
   agent: { model: "provider/model", projectDir: "." },
   strategy: { nextPrompt: () => "DONE" },
