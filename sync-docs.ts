@@ -201,13 +201,24 @@ function hoistSubfolder(targetDir: string, subfolder: string): void {
   const subPath = path.join(targetDir, subfolder);
   if (!fs.existsSync(subPath)) return;
 
-  for (const entry of fs.readdirSync(subPath)) {
-    fs.renameSync(path.join(subPath, entry), path.join(targetDir, entry));
+  // Stash the subfolder contents in a temp directory so we can wipe targetDir
+  // cleanly (including any root-level files like README.md that git materialised
+  // outside the sparse-checkout cone) before promoting them.
+  const tmpDir = `${targetDir}_hoist_tmp`;
+  fs.renameSync(subPath, tmpDir);
+
+  // Remove everything in targetDir except .git/.
+  for (const entry of fs.readdirSync(targetDir)) {
+    if (entry === ".git") continue;
+    fs.rmSync(path.join(targetDir, entry), { recursive: true, force: true });
   }
 
-  // Remove the top-level intermediate directory (e.g. "docs" from "docs/workers").
-  const topLevel = subfolder.split("/")[0];
-  fs.rmSync(path.join(targetDir, topLevel), { recursive: true, force: true });
+  // Move the stashed contents into the now-clean targetDir.
+  for (const entry of fs.readdirSync(tmpDir)) {
+    fs.renameSync(path.join(tmpDir, entry), path.join(targetDir, entry));
+  }
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
 function syncRepo(gitUrl: string, subfolder?: string, name?: string): void {
