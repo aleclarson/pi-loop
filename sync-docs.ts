@@ -186,6 +186,30 @@ function resolveEntry(entry: SyncedDocsEntry): SyncedDocsEntry {
 // Core sync logic
 // ---------------------------------------------------------------------------
 
+/**
+ * Move the contents of `targetDir/subfolder/` up to `targetDir/`, then remove
+ * the now-empty intermediate directory tree.
+ *
+ * This makes the subfolder the effective root of the cloned docs, so agents
+ * see `docs/third_party/<name>/` rather than `docs/third_party/<name>/<subfolder>/`.
+ *
+ * Safe to call on subsequent reset runs: git restores the sparse-checkout state
+ * (recreating the subfolder), and the hoist simply overwrites any leftover files
+ * from the previous run before declutter tidies everything up.
+ */
+function hoistSubfolder(targetDir: string, subfolder: string): void {
+  const subPath = path.join(targetDir, subfolder);
+  if (!fs.existsSync(subPath)) return;
+
+  for (const entry of fs.readdirSync(subPath)) {
+    fs.renameSync(path.join(subPath, entry), path.join(targetDir, entry));
+  }
+
+  // Remove the top-level intermediate directory (e.g. "docs" from "docs/workers").
+  const topLevel = subfolder.split("/")[0];
+  fs.rmSync(path.join(targetDir, topLevel), { recursive: true, force: true });
+}
+
 function syncRepo(gitUrl: string, subfolder?: string, name?: string): void {
   const repoName = name ?? repoNameFromUrl(gitUrl);
   const targetBase = path.resolve("docs/third_party");
@@ -226,6 +250,7 @@ function syncRepo(gitUrl: string, subfolder?: string, name?: string): void {
     }
   }
 
+  if (subfolder) hoistSubfolder(targetDir, subfolder);
   log(`Removing non-markdown files from ${targetDir}`);
   declutter(targetDir);
 
