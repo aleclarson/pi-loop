@@ -91,6 +91,10 @@ export class GoddardSdk {
     appendSpecInstructions: (cwd?: string) => Promise<string>;
   };
 
+  readonly sessions: {
+    complete: (input: RepoRef & { prNumber: number }) => Promise<void>;
+  };
+
   readonly #baseUrl: URL;
   readonly #tokenStorage: TokenStorage;
   readonly #fetchImpl: FetchLike;
@@ -201,6 +205,20 @@ export class GoddardSdk {
     this.agents = {
       appendSpecInstructions: async (cwd) => {
         return appendSpecInstructions(cwd);
+      }
+    };
+
+    this.sessions = {
+      complete: async ({ owner, repo, prNumber }) => {
+        const token = await this.#requireToken();
+        await this.#sendJson<void>(
+          this.#rouzerClient.request(
+            routes.piSessionCompleteRoute.POST({
+              headers: { authorization: `Bearer ${token}` },
+              body: { owner, repo, prNumber }
+            })
+          )
+        );
       }
     };
   }

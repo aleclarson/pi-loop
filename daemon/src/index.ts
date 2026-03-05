@@ -12,7 +12,7 @@ export type DaemonIo = {
 type SdkClient = ReturnType<typeof createSdk>;
 
 type OneShotInput = {
-  event: Extract<RepoEvent, { type: "comment" | "review" }>;
+  event: Extract<RepoEvent, { type: "comment" | "review" | "proposal_merged" }>;
   prompt: string;
   projectDir: string;
   piBin: string;
@@ -54,7 +54,7 @@ export async function runDaemonCli(
 
         subscription.on("event", async (payload) => {
           const event = payload as RepoEvent;
-          if (!isFeedbackEvent(event)) {
+          if (!isFeedbackEvent(event) && event.type !== "proposal_merged") {
             return;
           }
 
@@ -108,6 +108,15 @@ export async function runDaemonCli(
               }
             });
             io.stdout(`One-shot pi session finished for PR #${event.prNumber} (exit ${exitCode}).`);
+
+            if (event.type === "proposal_merged") {
+              try {
+                await sdk.sessions.complete({ owner: event.owner, repo: event.repo, prNumber: event.prNumber });
+                io.stdout(`Marked pi session as complete for merged proposal PR #${event.prNumber}.`);
+              } catch (completionError) {
+                io.stderr(`Failed to mark pi session as complete: ${completionError}`);
+              }
+            }
           } catch (error) {
             io.stderr(error instanceof Error ? error.message : String(error));
           } finally {
@@ -256,7 +265,15 @@ function isFeedbackEvent(event: RepoEvent): event is Extract<RepoEvent, { type: 
   return event.type === "comment" || event.type === "review";
 }
 
-function buildPrompt(event: Extract<RepoEvent, { type: "comment" | "review" }>): string {
+function buildPrompt(event: Extract<RepoEvent, { type: "comment" | "review" | "proposal_merged" }>): string {
+  if (event.type === "proposal_merged") {
+    return [
+      `A proposal PR #${event.prNumber} ("${event.title}") has been merged into the repository.`,
+      `Your task is to implement the changes described in the proposal. Review the merged proposal and make the necessary modifications to the codebase.`,
+      "Do not switch to another task; stay scoped to this proposal's implementation."
+    ].join("\n\n");
+  }
+
   const feedback =
     event.type === "comment"
       ? `Comment from @${event.author}:\n${event.body}`

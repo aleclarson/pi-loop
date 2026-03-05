@@ -171,19 +171,54 @@ export class TursoBackendControlPlane implements BackendControlPlane {
             reactionAdded: "eyes",
             createdAt
           }
-        : {
-            type: "review",
-            owner: event.owner,
-            repo: event.repo,
-            prNumber: event.prNumber,
-            author: event.author,
-            state: event.state,
-            body: event.body,
-            reactionAdded: "eyes",
-            createdAt
-          };
+        : event.type === "pull_request_review"
+          ? {
+              type: "review",
+              owner: event.owner,
+              repo: event.repo,
+              prNumber: event.prNumber,
+              author: event.author,
+              state: event.state,
+              body: event.body,
+              reactionAdded: "eyes",
+              createdAt
+            }
+          : {
+              type: "proposal_merged",
+              owner: event.owner,
+              repo: event.repo,
+              prNumber: event.prNumber,
+              title: event.title,
+              author: event.author,
+              createdAt
+            };
+
+    if (mapped.type === "proposal_merged") {
+      await this.#db.insert(schema.piSessions).values({
+        owner: event.owner,
+        repo: event.repo,
+        prNumber: event.prNumber,
+        sessionType: "proposal",
+        status: "active",
+        createdAt
+      });
+    }
 
     return mapped;
+  }
+
+  async completePiSession(owner: string, repo: string, prNumber: number): Promise<void> {
+    assertRepo(owner, repo);
+    await this.#db
+      .update(schema.piSessions)
+      .set({ status: "completed" })
+      .where(
+        and(
+          eq(schema.piSessions.owner, owner),
+          eq(schema.piSessions.repo, repo),
+          eq(schema.piSessions.prNumber, prNumber)
+        )
+      );
   }
 }
 

@@ -101,6 +101,24 @@ export function createBackendRouter(dependencies: RouterDependencies = {}) {
         }
       }
     },
+    piSessionCompleteRoute: {
+      POST: async (ctx) => {
+        try {
+          const env = readEnv(ctx);
+          const controlPlane = createControlPlane(env);
+          const token = readBearerToken(ctx.headers.authorization);
+          await controlPlane.getSession(token);
+
+          const { owner, repo, prNumber } = ctx.body;
+          if (controlPlane.completePiSession) {
+            await controlPlane.completePiSession(owner, repo, prNumber);
+          }
+          return new Response("OK", { status: 200 });
+        } catch (error) {
+          return toErrorResponse(error);
+        }
+      }
+    },
     repoStreamRoute: {
       GET: async (ctx) => {
         try {

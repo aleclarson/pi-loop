@@ -90,6 +90,39 @@ export class GoddardGitHubApp {
 
       this.app.webhooks.on("pull_request", async ({ octokit, payload }) => {
         console.log(`Received pull_request event: ${payload.action} for PR #${payload.pull_request.number}`);
+
+        if (payload.action === "closed" && payload.pull_request.merged) {
+          try {
+            const files = await octokit.rest.pulls.listFiles({
+              owner: payload.repository.owner.login,
+              repo: payload.repository.name,
+              pull_number: payload.pull_request.number
+            });
+
+            const hasProposal = files.data.some(
+              (f) => f.filename.startsWith("proposals/") || f.filename.startsWith("spec/proposals/")
+            );
+
+            if (hasProposal) {
+              await this.#fetchImpl(new URL("/webhooks/github", this.#baseUrl), {
+                method: "POST",
+                headers: {
+                  "content-type": "application/json"
+                },
+                body: JSON.stringify({
+                  type: "pull_request_merged",
+                  owner: payload.repository.owner.login,
+                  repo: payload.repository.name,
+                  prNumber: payload.pull_request.number,
+                  author: payload.pull_request.user.login,
+                  title: payload.pull_request.title
+                })
+              });
+            }
+          } catch (error) {
+            console.error("Failed to handle pull_request merge event:", error);
+          }
+        }
       });
     }
   }

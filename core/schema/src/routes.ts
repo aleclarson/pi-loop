@@ -87,9 +87,28 @@ export const githubWebhookRoute = route("webhooks/github", {
         author: z.string(),
         state: z.enum(["approved", "changes_requested", "commented"]),
         body: z.string()
+      }),
+      z.object({
+        type: z.literal("pull_request_merged"),
+        owner: z.string(),
+        repo: z.string(),
+        prNumber: z.number(),
+        author: z.string(),
+        title: z.string()
       })
     ]),
     response: $type<RepoEvent>()
+  }
+});
+
+export const piSessionCompleteRoute = route("pi/session/complete", {
+  POST: {
+    headers: bearerHeaderSchema,
+    body: z.object({
+      owner: z.string(),
+      repo: z.string(),
+      prNumber: z.number()
+    })
   }
 });
 

@@ -176,20 +176,34 @@ export class InMemoryBackendControlPlane implements BackendControlPlane {
             reactionAdded: "eyes",
             createdAt
           }
-        : {
-            type: "review",
-            owner: event.owner,
-            repo: event.repo,
-            prNumber: event.prNumber,
-            author: event.author,
-            state: event.state,
-            body: event.body,
-            reactionAdded: "eyes",
-            createdAt
-          };
+        : event.type === "pull_request_review"
+          ? {
+              type: "review",
+              owner: event.owner,
+              repo: event.repo,
+              prNumber: event.prNumber,
+              author: event.author,
+              state: event.state,
+              body: event.body,
+              reactionAdded: "eyes",
+              createdAt
+            }
+          : {
+              type: "proposal_merged",
+              owner: event.owner,
+              repo: event.repo,
+              prNumber: event.prNumber,
+              title: event.title,
+              author: event.author,
+              createdAt
+            };
 
     this.broadcast(mapped);
     return mapped;
+  }
+
+  completePiSession(owner: string, repo: string, prNumber: number): void {
+    // In-memory no-op since there is no persistent table.
   }
 
   addStreamSocket(repoKey: string, socket: unknown): void {

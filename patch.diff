@@ -1,0 +1,33 @@
+<<<<<<< SEARCH
+  z.object({
+    type: z.literal("pull_request_review"),
+    owner: z.string(),
+    repo: z.string(),
+    prNumber: z.number(),
+    author: z.string(),
+    state: z.enum(["approved", "changes_requested", "commented"]),
+    body: z.string(),
+  })
+]);
+export type GitHubWebhookInput = z.infer<typeof GitHubWebhookInputSchema>;
+=======
+  z.object({
+    type: z.literal("pull_request_review"),
+    owner: z.string(),
+    repo: z.string(),
+    prNumber: z.number(),
+    author: z.string(),
+    state: z.enum(["approved", "changes_requested", "commented"]),
+    body: z.string(),
+  }),
+  z.object({
+    type: z.literal("pull_request_merged"),
+    owner: z.string(),
+    repo: z.string(),
+    prNumber: z.number(),
+    author: z.string(),
+    title: z.string(),
+  })
+]);
+export type GitHubWebhookInput = z.infer<typeof GitHubWebhookInputSchema>;
+>>>>>>> REPLACE
