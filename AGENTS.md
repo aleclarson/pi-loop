@@ -16,22 +16,42 @@ without committing it to the repository.
 ### How to run
 
 ```bash
-# Entire repository (all *.md files)
-pnpm tsx sync-docs.ts <git-url>
+# Sync all repos listed in synced_docs.json
+pnpm sync-docs
 
-# Specific subfolder only (sparse checkout — faster, smaller)
-pnpm tsx sync-docs.ts <git-url> <subfolder>
+# Sync a single repo ad-hoc (entire repo — all *.md files)
+pnpm sync-docs <git-url>
+
+# Sync a single repo ad-hoc (sparse checkout — specific subfolder only)
+pnpm sync-docs <git-url> <subfolder>
 ```
 
 **Examples**
 
 ```bash
+# Sync everything in the manifest
+pnpm sync-docs
+
 # Drizzle ORM — grab everything
-pnpm tsx sync-docs.ts https://github.com/drizzle-team/drizzle-orm
+pnpm sync-docs https://github.com/drizzle-team/drizzle-orm
 
 # Cloudflare Workers SDK — only the docs/ subtree
-pnpm tsx sync-docs.ts https://github.com/cloudflare/workers-sdk docs
+pnpm sync-docs https://github.com/cloudflare/workers-sdk docs
 ```
+
+### Pinning repos for all agents
+
+Add entries to `synced_docs.json` at the repo root to make a library always
+available to every agent without needing to pass arguments:
+
+```json
+[
+  { "url": "https://github.com/drizzle-team/drizzle-orm" },
+  { "url": "https://github.com/cloudflare/workers-sdk", "subfolder": "docs" }
+]
+```
+
+Running `pnpm sync-docs` (no arguments) will iterate the list and sync each entry.
 
 ### Where docs land
 

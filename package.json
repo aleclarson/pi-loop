@@ -20,6 +20,7 @@
     "vitest": "^1.0.0"
   },
   "scripts": {
+    "sync-docs": "tsx sync-docs.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "pnpm -r run lint",
     "test": "pnpm -r run test",
