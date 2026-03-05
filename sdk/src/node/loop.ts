@@ -9,37 +9,7 @@ import {
   resolveLoopConfigPath
 } from "@goddard-ai/storage";
 
-const DEFAULT_LOOP_CONFIG_TEMPLATE = `import { Models, defineConfig } from "@goddard-ai/config";
-
-export default defineConfig({
-  agent: {
-    model: Models.Anthropic.ClaudeSonnet45,
-    projectDir: "./",
-    thinkingLevel: "low"
-  },
-  strategy: {
-    nextPrompt: ({ cycleNumber, lastSummary }) =>
-      \`Cycle \${cycleNumber}. Last summary: \${lastSummary ?? "none"}. Make one safe improvement, then answer with SUMMARY|DONE when ready.\`
-  },
-  rateLimits: {
-    cycleDelay: "30m",
-    maxTokensPerCycle: 128000,
-    maxOpsPerMinute: 120,
-    maxCyclesBeforePause: 100
-  },
-  retries: {
-    maxAttempts: 3,
-    initialDelayMs: 1000,
-    maxDelayMs: 30000,
-    backoffFactor: 2,
-    jitterRatio: 0.2,
-    retryableErrors: () => true
-  },
-  metrics: {
-    enableLogging: true
-  }
-});
-`;
+import DEFAULT_LOOP_CONFIG_TEMPLATE from "../../../templates/default-loop-config.ts?raw";
 
 export async function initLoopConfig(options: { global?: boolean }): Promise<{ path: string }> {
   const targetPath = options.global ? getGlobalConfigPath() : getLocalConfigPath();
@@ -110,9 +80,6 @@ export async function generateLoopSystemdService(
 ): Promise<{ path: string }> {
   const { config } = await loadLoopConfig(cwd, { global: options.global });
   
-  // Try dynamic homedir, fall back to process.env.HOME if needed, but since we are in node we can use os
-  // but to keep imports clean we will inject or just rely on what is passed.
-  // Actually, we need homedir:
   const os = await import("node:os");
   const targetRoot = options.global ? os.homedir() : cwd;
   const outputPath = join(targetRoot, "systemd", "goddard.service");
