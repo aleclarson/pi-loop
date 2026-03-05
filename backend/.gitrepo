@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:goddard-ai/backend.git
 	branch = main
-	commit = d3a9cd4c62406e1abba5ce188d1458992fa38d39
+	commit = 0d2c9a83f972351380c2577479ce44c352cd648d
 	method = merge
 	cmdver = 0.4.9
-	parent = 0e1abb27d720082e831f3caaafc15d48d4da63e6
+	parent = 194e2511329de2d31ecd3d9761a7cc479c9a30a6
