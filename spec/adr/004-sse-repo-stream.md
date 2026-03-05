@@ -1,13 +1,3 @@
----
-id: adr-004-sse-repo-stream
-status: ACTIVE
-links:
-  - type: Relates-To
-    target: spec/architecture.md
-  - type: Relates-To
-    target: spec/data-flows.md
----
-
 # ADR-004: Repository Stream Transport Uses SSE
 
 ## Status

@@ -1,18 +1,6 @@
----
-id: cli-loop-commands
-status: ACTIVE
-links:
-  - type: Depends-On
-    target: spec/configuration.md
-  - type: Depends-On
-    target: spec/runtime-loop.md
-  - type: Relates-To
-    target: spec/cli/interactive.md
----
-
 # CLI Specification — Autonomous Loop
 
-This document covers the `goddard loop` subcommand group, which manages autonomous agent cycles. For interactive developer commands, see [`cli/interactive.md`](./interactive.md).
+This document covers the `goddard loop` subcommand group, which manages autonomous agent cycles.
 
 ---
 
@@ -70,7 +58,6 @@ Generates a `goddard.service` systemd unit file for production deployment.
   - Configurable `RestartSec` and `Nice`
 
 ### Example output
-```ini
 [Unit]
 Description=Goddard Autonomous Agent Loop
 After=network.target
@@ -87,7 +74,6 @@ Environment=MY_VAR=value
 
 [Install]
 WantedBy=multi-user.target
-```
 
 ---
 

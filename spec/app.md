@@ -1,39 +1,3 @@
----
-id: app-desktop-index
-status: ACTIVE
-links:
-  - type: Extends
-    target: spec/vision.md
-  - type: Extends
-    target: spec/product.md
-  - type: Depends-On
-    target: spec/architecture.md
-  - type: Depends-On
-    target: spec/data-flows.md
-  - type: Relates-To
-    target: spec/non-goals.md
-  - type: Leads-To
-    target: spec/app/app-shell.md
-  - type: Leads-To
-    target: spec/app/sessions-screen.md
-  - type: Leads-To
-    target: spec/app/pull-requests-screen.md
-  - type: Leads-To
-    target: spec/app/search-screen.md
-  - type: Leads-To
-    target: spec/app/tasks-screen.md
-  - type: Leads-To
-    target: spec/app/roadmap-screen.md
-  - type: Leads-To
-    target: spec/app/spec-screen.md
-  - type: Leads-To
-    target: spec/app/pages-screen.md
-  - type: Leads-To
-    target: spec/app/extensions-screen.md
-  - type: Leads-To
-    target: spec/app/settings-screen.md
----
-
 # Desktop App Intent Index
 
 ## Goal
@@ -58,6 +22,22 @@ The desktop app is an alternative interface to the same Goddard runtime used by 
 - Navigation icon selection updates Main Tab content.
 - Drill-down interactions open domain-specific detail tabs.
 
+## Core Capabilities
+- **Session Steering**: Initiate, monitor, and provide real-time feedback to AI agents executing tasks.
+- **Pull Request Review**: Triage, review, and correlate AI-generated pull requests directly with their originating sessions.
+- **Specification Management**: Browse and refine repository specifications to align human intent with AI execution.
+- **Task & Roadmap Prioritization**: View and manage the queue of upcoming work and long-term proposals.
+- **Global Discovery**: Search across all domains (sessions, PRs, specs, tasks) from a single entry point.
+
+## Behavior Model
+- **Centralized Context**: Provides a single pane of glass for all repository-specific AI operations.
+- **Real-Time Visibility**: Exposes real-time state of active sessions, tasks, and proposals.
+- **Interactive Steering**: Allows humans to seamlessly monitor, review, and adjust AI execution without dropping context.
+
+## State Machines
+- **Authentication Flow**: `Anonymous -> Authenticated Action Requested -> Auth Prompt -> Authenticated` (Authentication is lazy; users are only prompted to log in when attempting an action that requires a backend or external service identity, such as GitHub).
+- **Session Lifecycle View**: `Idle -> Active -> Blocked (Awaiting Input) -> Completed`
+
 ## Shared Data Requirements
 All screens consume normalized, real-time domain records with stable identities:
 - Repository
@@ -73,21 +53,10 @@ All screens consume normalized, real-time domain records with stable identities:
 
 ## Cross-Cutting Constraints
 - Must remain lightweight (Tauri-first footprint expectations).
-- Must authenticate against existing Goddard backend and use `@goddard-ai/sdk` authority model.
+- Frontend-Heavy Architecture: The application must rely strictly on official Tauri plugins for OS interactions to maintain a zero-custom-Rust host layer.
+- Lazy Authentication: The application must function in a degraded or local-only mode until an external service (like GitHub) is explicitly requested.
 - Must handle streaming updates gracefully for high-churn views.
 
 ## Non-Goals
 - Replacing CLI for advanced automation and CI usage.
 - Implementing a full in-app code editor.
-
-## Screen Map
-- Shell & tab model: [`app-shell.md`](./app-shell.md)
-- Sessions: [`sessions-screen.md`](./sessions-screen.md)
-- Pull requests: [`pull-requests-screen.md`](./pull-requests-screen.md)
-- Search: [`search-screen.md`](./search-screen.md)
-- Tasks: [`tasks-screen.md`](./tasks-screen.md)
-- Roadmap: [`roadmap-screen.md`](./roadmap-screen.md)
-- Spec: [`spec-screen.md`](./spec-screen.md)
-- Pages: [`pages-screen.md`](./pages-screen.md)
-- Extensions: [`extensions-screen.md`](./extensions-screen.md)
-- Settings: [`settings-screen.md`](./settings-screen.md)

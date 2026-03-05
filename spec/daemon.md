@@ -1,17 +1,3 @@
----
-id: daemon-pr-feedback-one-shot
-status: ACTIVE
-links:
-  - type: Extends
-    target: spec/daemon/index.md
-  - type: Depends-On
-    target: spec/data-flows.md
-  - type: Relates-To
-    target: spec/cli/interactive.md
-  - type: Relates-To
-    target: spec/non-goals.md
----
-
 # PR Feedback One-Shot Daemon
 
 ## Goal

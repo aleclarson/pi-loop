@@ -1,13 +1,3 @@
----
-id: adr-003-persistent-agent-session
-status: ACTIVE
-links:
-  - type: Relates-To
-    target: spec/runtime-loop.md
-  - type: Relates-To
-    target: spec/configuration.md
----
-
 # ADR-003: Persistent Agent Session Across Cycles
 
 ## Status
