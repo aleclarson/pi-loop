@@ -1,0 +1,49 @@
+name: Sync Spec Branch
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'spec/**'
+
+concurrency:
+  group: sync-spec-branch
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync spec-only branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@v4
+        with:
+          # REQUIRED: git subtree needs full history to calculate splits
+          fetch-depth: 0
+          # We might need a PAT to push the new branch to the remote without running into permissions
+          token: ${{ secrets.SYNC_PAT }}
+
+      - name: Setup Git Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Push spec-only branch
+        run: |
+          # Split the spec folder into a new local branch
+          git subtree split --prefix spec -b spec-only
+          # Force push it to the spec-only branch on the origin
+          git push origin spec-only --force
+
+      - name: Trigger Roadmap sync
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_PAT }}
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/goddard-ai/roadmap/actions/workflows/sync-spec.yml/dispatches \
+            -f "ref=main"

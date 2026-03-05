@@ -178,6 +178,22 @@ export class TursoBackendControlPlane implements BackendControlPlane {
     assertRepo(event.owner, event.repo);
 
     const createdAt = new Date().toISOString();
+
+    if (event.type === "pull_request") {
+      if (event.action === "closed" && event.merged) {
+        return {
+          type: "proposal.merged",
+          owner: event.owner,
+          repo: event.repo,
+          prNumber: event.prNumber,
+          author: event.author,
+          createdAt
+        };
+      } else {
+        throw new HttpError(400, "Unsupported pull_request action");
+      }
+    }
+
     const mapped: RepoEvent =
       event.type === "issue_comment"
         ? {

@@ -100,6 +100,16 @@ export const githubWebhookRoute = route("webhooks/github", {
         author: z.string(),
         state: z.enum(["approved", "changes_requested", "commented"]),
         body: z.string()
+      }),
+      z.object({
+        type: z.literal("pull_request"),
+        action: z.string(),
+        merged: z.boolean(),
+        owner: z.string(),
+        repo: z.string(),
+        prNumber: z.number(),
+        author: z.string(),
+        base: z.string()
       })
     ]),
     response: $type<RepoEvent>()

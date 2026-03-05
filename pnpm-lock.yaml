@@ -128,10 +128,19 @@ importers:
       '@goddard-ai/sdk':
         specifier: workspace:*
         version: link:../../sdk
+      '@libsql/client':
+        specifier: ^0.17.0
+        version: 0.17.0
+      drizzle-orm:
+        specifier: ^0.45.1
+        version: 0.45.1(@cloudflare/workers-types@4.20260301.1)(@libsql/client@0.17.0)
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.35
+      drizzle-kit:
+        specifier: ^0.31.9
+        version: 0.31.9
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -144,6 +153,9 @@ importers:
       '@goddard-ai/sdk':
         specifier: workspace:*
         version: link:../sdk
+      '@goddard-ai/storage':
+        specifier: workspace:^
+        version: link:../core/storage
       '@xterm/headless':
         specifier: ^6.0.0
         version: 6.0.0
