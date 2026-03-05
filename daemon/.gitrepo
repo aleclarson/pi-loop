@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:goddard-ai/daemon.git
 	branch = main
-	commit = d0000f995515a492e905f95702d89a92ad17f602
+	commit = 2749b68f4004c9c63fddb592f798d234b353e741
 	method = merge
 	cmdver = 0.4.9
-	parent = 15c070c5fddd615919bd41869e67176f9cae1b76
+	parent = 76f247e5ed5accf509b4a1443ce98782f9eb073f
