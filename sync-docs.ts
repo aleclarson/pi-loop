@@ -13,6 +13,11 @@
  *   pnpm sync-docs
  *   pnpm sync-docs https://github.com/drizzle-team/drizzle-orm
  *   pnpm sync-docs https://github.com/cloudflare/workers-sdk docs
+ *
+ * Template syntax in synced_docs.json:
+ *   {{dependencies.drizzle-orm}}              — version from root package.json
+ *   {{devDependencies.tsx:backend}}           — version from backend/package.json
+ *   Range specifiers (^, ~, >=, …) are stripped from resolved version strings.
  */
 
 import { execSync } from "node:child_process";
@@ -26,6 +31,7 @@ import path from "node:path";
 interface SyncedDocsEntry {
   url: string;
   subfolder?: string;
+  [key: string]: string | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -84,6 +90,95 @@ function declutter(dir: string, isRoot = true): boolean {
   }
 
   return hasKeeper;
+}
+
+// ---------------------------------------------------------------------------
+// Template resolution
+// ---------------------------------------------------------------------------
+
+/** Cache of parsed package.json files keyed by their resolved absolute path. */
+const pkgCache = new Map<string, Record<string, unknown>>();
+
+function loadPackageJson(pkgPath: string): Record<string, unknown> {
+  const abs = path.resolve(pkgPath);
+  if (!pkgCache.has(abs)) {
+    if (!fs.existsSync(abs)) {
+      throw new Error(`package.json not found: ${abs}`);
+    }
+    pkgCache.set(abs, JSON.parse(fs.readFileSync(abs, "utf8")));
+  }
+  return pkgCache.get(abs)!;
+}
+
+/**
+ * Resolve a single `{{token}}` expression.
+ *
+ * Token grammar:
+ *   <field>.<packageName>              → root package.json
+ *   <field>.<packageName>:<pkgDir>     → <pkgDir>/package.json
+ *
+ * Examples:
+ *   dependencies.drizzle-orm
+ *   devDependencies.vitest:backend
+ */
+function resolveToken(token: string): string {
+  // Split on the first colon to get an optional package directory.
+  const colonIdx = token.indexOf(":");
+  const fieldKey = colonIdx === -1 ? token : token.slice(0, colonIdx);
+  const pkgDir = colonIdx === -1 ? "." : token.slice(colonIdx + 1).trim();
+
+  // fieldKey must be <field>.<packageName>
+  const dotIdx = fieldKey.indexOf(".");
+  if (dotIdx === -1) {
+    throw new Error(
+      `Invalid template token "{{${token}}}": expected "<field>.<packageName>" before the colon.`
+    );
+  }
+
+  const field = fieldKey.slice(0, dotIdx).trim();
+  const packageName = fieldKey.slice(dotIdx + 1).trim();
+
+  const pkg = loadPackageJson(path.join(pkgDir, "package.json"));
+
+  const fieldValue = pkg[field];
+  if (!fieldValue || typeof fieldValue !== "object") {
+    throw new Error(
+      `Invalid template token "{{${token}}}": field "${field}" not found or not an object in ${path.join(pkgDir, "package.json")}.`
+    );
+  }
+
+  const version = (fieldValue as Record<string, unknown>)[packageName];
+  if (typeof version !== "string") {
+    throw new Error(
+      `Invalid template token "{{${token}}}": package "${packageName}" not found in "${field}" of ${path.join(pkgDir, "package.json")}.`
+    );
+  }
+
+  // Strip semver range specifiers (^, ~, >=, >, <=, <, =) so the result is
+  // a bare version string suitable for use in URLs or git refs.
+  return version.replace(/^[~^>=<]+/, "");
+}
+
+/**
+ * Replace all `{{…}}` tokens in a string using dependency versions from
+ * package.json files.
+ */
+function resolveTemplates(value: string): string {
+  return value.replace(/\{\{([^}]+)\}\}/g, (_, token: string) =>
+    resolveToken(token.trim())
+  );
+}
+
+/**
+ * Apply template resolution to all string fields of a synced_docs.json entry.
+ */
+function resolveEntry(entry: SyncedDocsEntry): SyncedDocsEntry {
+  return Object.fromEntries(
+    Object.entries(entry).map(([k, v]) => [
+      k,
+      typeof v === "string" ? resolveTemplates(v) : v,
+    ])
+  ) as SyncedDocsEntry;
 }
 
 // ---------------------------------------------------------------------------
@@ -154,22 +249,35 @@ if (gitUrl) {
     process.exit(1);
   }
 
-  const entries: SyncedDocsEntry[] = JSON.parse(
+  const rawEntries: SyncedDocsEntry[] = JSON.parse(
     fs.readFileSync(manifestPath, "utf8")
   );
 
-  if (!Array.isArray(entries) || entries.length === 0) {
+  if (!Array.isArray(rawEntries) || rawEntries.length === 0) {
     log("synced_docs.json is empty — nothing to sync.");
     process.exit(0);
   }
 
-  log(`Syncing ${entries.length} repo(s) from synced_docs.json…`);
+  log(`Syncing ${rawEntries.length} repo(s) from synced_docs.json…`);
 
-  for (const entry of entries) {
-    if (!entry.url) {
-      console.warn(`[sync-docs] Skipping entry with missing "url": ${JSON.stringify(entry)}`);
+  for (const raw of rawEntries) {
+    if (!raw.url) {
+      console.warn(
+        `[sync-docs] Skipping entry with missing "url": ${JSON.stringify(raw)}`
+      );
       continue;
     }
+
+    let entry: SyncedDocsEntry;
+    try {
+      entry = resolveEntry(raw);
+    } catch (err) {
+      console.error(
+        `[sync-docs] Failed to resolve templates in entry ${JSON.stringify(raw)}:\n  ${(err as Error).message}`
+      );
+      process.exit(1);
+    }
+
     log(`\n— ${entry.url}${entry.subfolder ? ` (${entry.subfolder})` : ""}`);
     syncRepo(entry.url, entry.subfolder);
   }

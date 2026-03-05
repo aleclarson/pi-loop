@@ -53,6 +53,45 @@ available to every agent without needing to pass arguments:
 
 Running `pnpm sync-docs` (no arguments) will iterate the list and sync each entry.
 
+### Referencing dependency versions in synced_docs.json
+
+Any string field in a `synced_docs.json` entry can use `{{…}}` tokens to pull
+version numbers directly from a `package.json`, keeping doc refs in sync with
+the actual installed dependency:
+
+```
+{{<field>.<package-name>}}                 # root package.json
+{{<field>.<package-name>:<package-dir>}}   # <package-dir>/package.json
+```
+
+- **`field`** is a top-level key in the target `package.json`
+  (e.g. `dependencies`, `devDependencies`, `peerDependencies`).
+- **`package-name`** is the dependency key within that field.
+- **`package-dir`** is an optional path to a workspace package
+  (relative to the repo root).
+
+Semver range specifiers (`^`, `~`, `>=`, `>`, `<=`, `<`) are automatically
+stripped so the resolved value is a bare version string.
+
+**Examples**
+
+```json
+[
+  {
+    "url": "https://github.com/drizzle-team/drizzle-orm",
+    "subfolder": "{{dependencies.drizzle-orm}}"
+  },
+  {
+    "url": "https://github.com/microsoft/TypeScript",
+    "subfolder": "v{{devDependencies.typescript}}"
+  },
+  {
+    "url": "https://github.com/tursodatabase/libsql",
+    "subfolder": "{{dependencies.@libsql/client:backend}}"
+  }
+]
+```
+
 ### Where docs land
 
 Clones are written to `docs/third_party/<repo-name>/`. After cloning, every file
