@@ -1,11 +1,3 @@
----
-id: adr-002-edge-native-backend
-status: ACTIVE
-links:
-  - type: Relates-To
-    target: spec/architecture.md
----
-
 # ADR-002: Edge-Native Backend (Cloudflare Workers + Durable Objects)
 
 ## Status
@@ -25,7 +17,7 @@ The backend runs on **Cloudflare Workers** (stateless request handlers) with **C
 
 ## Rationale
 
-- **Global low latency:** Workers execute at the edge closest to the requester, satisfying the Real-Time pillar from [`../vision.md`](../vision.md).
+- **Global low latency:** Workers execute at the edge closest to the requester, satisfying the Real-Time pillar.
 - **Durable Objects as session anchors:** Each `owner/repo` maps to a Durable Object instance that owns all SSE connections for that repo, providing strong isolation with no cross-repo interference.
 - **No server management:** Cloudflare handles scaling, availability, and distribution.
 - **Turso complements the edge model:** SQLite at the edge avoids round-trips to a centralized database region.

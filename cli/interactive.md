@@ -1,18 +1,6 @@
----
-id: cli-interactive-commands
-status: ACTIVE
-links:
-  - type: Extends
-    target: spec/architecture.md
-  - type: Depends-On
-    target: spec/data-flows.md
-  - type: Relates-To
-    target: spec/daemon/pr-feedback-one-shot.md
----
-
 # CLI Specification — Interactive Mode
 
-This node defines root `goddard` commands for manual terminal use. For autonomous loop commands, see [`cli/loop.md`](./loop.md).
+This node defines root `goddard` commands for manual terminal use.
 
 ## Actor
 

@@ -1,13 +1,3 @@
----
-id: adr-001-sdk-first-architecture
-status: ACTIVE
-links:
-  - type: Relates-To
-    target: spec/architecture.md
-  - type: Relates-To
-    target: spec/non-goals.md
----
-
 # ADR-001: SDK-First Architecture
 
 ## Status
@@ -30,7 +20,7 @@ No capability that belongs in the SDK may be re-implemented in a consumer packag
 - **Single source of truth:** Bug fixes, API changes, and new capabilities propagate to all consumers automatically.
 - **Testability:** Platform logic can be tested in isolation without spinning up CLI processes.
 - **Third-party extensibility:** External integrations can consume `@goddard-ai/sdk` directly without depending on CLI internals.
-- **Enforces the thin control-plane boundary** described in [`../non-goals.md`](../non-goals.md).
+- **Enforces the thin control-plane boundary** described in the core architecture.
 
 ## Consequences
 

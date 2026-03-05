@@ -1,19 +1,3 @@
----
-id: system-data-flows
-status: ACTIVE
-links:
-  - type: Extends
-    target: spec/architecture.md
-  - type: Relates-To
-    target: spec/cli/interactive.md
-  - type: Relates-To
-    target: spec/daemon/pr-feedback-one-shot.md
-  - type: Relates-To
-    target: spec/runtime-loop.md
-  - type: Relates-To
-    target: spec/rate-limiting.md
----
-
 # Data Flows
 
 This file captures conceptual end-to-end sequences only. Wire formats and API payload details belong in code.
