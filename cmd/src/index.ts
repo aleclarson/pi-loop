@@ -1,16 +1,11 @@
-import { createSdk, SPEC_SYSTEM_PROMPT, PROPOSE_SYSTEM_PROMPT } from "@goddard-ai/sdk";
-import { LOOP_SYSTEM_PROMPT } from "@goddard-ai/loop";
+import { createSdk, SPEC_SYSTEM_PROMPT, PROPOSE_SYSTEM_PROMPT, FileTokenStorage, LOOP_SYSTEM_PROMPT } from "@goddard-ai/sdk";
+import type { GoddardLoopConfig } from "@goddard-ai/sdk";
 import { inferRepoFromGitConfig, inferPrNumberFromGit, splitRepo } from "./git.ts";
-import { FileTokenStorage, getLocalConfigPath, getGlobalConfigPath, fileExists, resolveLoopConfigPath } from "@goddard-ai/storage";
 import { spawnSync } from "node:child_process";
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { access } from "node:fs/promises";
 import { constants as fsConstants } from "node:fs";
 import * as p from "@clack/prompts";
 import { dirname, join } from "node:path";
-import { homedir } from "node:os";
-import { createJiti } from "@mariozechner/jiti";
-import { createLoop } from "@goddard-ai/loop";
-import type { GoddardLoopConfig } from "@goddard-ai/loop";
 import { command, runSafely, string, option, subcommands, restPositionals, flag } from "cmd-ts";
 
 export type CliIo = {
@@ -54,21 +49,21 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
     return deps.createSdkClient?.(baseUrl) ?? createSdk({ baseUrl, tokenStorage: new FileTokenStorage() });
   };
   const spawnPi = deps.spawnPi ?? defaultSpawnPi;
-  const createLoopRuntime = deps.createLoopRuntime ?? createLoop;
 
   const loginCmd = command({
     name: "login",
     args: {
-      username: option({ type: string, long: "username" }),
+      username: option({ type: string, long: "username", defaultValue: () => "" }),
       baseUrl: option({ type: string, long: "base-url", defaultValue: () => "" })
     },
     handler: async (args) => {
       try {
         const sdk = getSdk(args.baseUrl || undefined);
-        const session = await sdk.auth.startDeviceFlow({ githubUsername: args.username });
-        const auth = await sdk.auth.completeDeviceFlow({
-          deviceCode: session.deviceCode,
-          githubUsername: args.username
+        const auth = await sdk.auth.login({
+          githubUsername: args.username || undefined,
+          onPrompt: (uri, code) => {
+            io.stdout(`Please visit ${uri} and enter code: ${code}`);
+          }
         });
         io.stdout(`Logged in as @${auth.githubUsername}`);
         return 0;
@@ -356,22 +351,13 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
   const loopInitCmd = command({
     name: "init",
     args: {
-      global: flag({ long: "global", short: "g" })
+      global: flag({ long: "global", short: "g" }),
+      baseUrl: option({ type: string, long: "base-url", defaultValue: () => "" })
     },
     handler: async (args) => {
       try {
-        const targetPath = args.global
-          ? getGlobalConfigPath()
-          : getLocalConfigPath();
-
-        if (await fileExists(targetPath)) {
-          io.stderr(`Config file already exists at ${targetPath}`);
-          return 1;
-        }
-
-        await mkdir(dirname(targetPath), { recursive: true });
-        await writeFile(targetPath, DEFAULT_LOOP_CONFIG_TEMPLATE, "utf-8");
-
+        const sdk = getSdk(args.baseUrl || undefined);
+        const { path: targetPath } = await sdk.loop.init({ global: args.global });
         io.stdout(`Created configuration at ${targetPath}`);
         io.stdout("Next step: goddard loop run");
         return 0;
@@ -384,26 +370,13 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
 
   const loopRunCmd = command({
     name: "run",
-    args: {},
-    handler: async () => {
+    args: {
+      baseUrl: option({ type: string, long: "base-url", defaultValue: () => "" })
+    },
+    handler: async (args) => {
       try {
-        const configPath = await resolveLoopConfigPath();
-        if (!configPath) {
-          io.stderr("Could not find config.ts in the current directory's .goddard/ folder or in ~/.goddard.");
-          io.stderr("Run `goddard loop init` to create one.");
-          return 1;
-        }
-
-        const jiti = createJiti(process.cwd());
-        const module = await jiti.import(configPath);
-        const config = (module as any).default ?? module;
-        if (!config) {
-          io.stderr("Config file must export a default configuration object.");
-          return 1;
-        }
-
-        const loop = createLoopRuntime(config as GoddardLoopConfig);
-        await loop.start();
+        const sdk = getSdk(args.baseUrl || undefined);
+        await sdk.loop.run(process.cwd(), { createLoopRuntime: deps.createLoopRuntime });
         io.stdout("Loop completed after DONE signal.");
         return 0;
       } catch (e) {
@@ -416,36 +389,13 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
   const loopGenerateSystemdCmd = command({
     name: "generate-systemd",
     args: {
-      global: flag({ long: "global", short: "g" })
+      global: flag({ long: "global", short: "g" }),
+      baseUrl: option({ type: string, long: "base-url", defaultValue: () => "" })
     },
     handler: async (args) => {
       try {
-        const configPath = args.global
-          ? getGlobalConfigPath()
-          : getLocalConfigPath();
-
-        if (!(await fileExists(configPath))) {
-          io.stderr(`Could not find config at ${configPath}`);
-          return 1;
-        }
-
-        const jiti = createJiti(process.cwd());
-        const module = await jiti.import(configPath);
-        const config = ((module as any).default ?? module) as GoddardLoopConfig;
-
-        const targetRoot = args.global ? homedir() : process.cwd();
-        const outputPath = join(targetRoot, "systemd", "goddard.service");
-
-        const user = config.systemd?.user ?? process.env.USER ?? "root";
-        const workingDir = config.systemd?.workingDir ?? process.cwd();
-        const restartSec = config.systemd?.restartSec ?? 10;
-        const nice = config.systemd?.nice ?? 10;
-        const environment = renderSystemdEnvironment(config.systemd?.environment);
-
-        const service = `[Unit]\nDescription=Goddard Autonomous Agent Loop\nAfter=network.target\n\n[Service]\nType=simple\nUser=${user}\nWorkingDirectory=${workingDir}\nExecStart=goddard loop run\nRestart=always\nRestartSec=${restartSec}\nNice=${nice}\n${environment}[Install]\nWantedBy=multi-user.target\n`;
-
-        await mkdir(dirname(outputPath), { recursive: true });
-        await writeFile(outputPath, service, "utf-8");
+        const sdk = getSdk(args.baseUrl || undefined);
+        const { path: outputPath } = await sdk.loop.generateSystemdService(process.cwd(), { global: args.global });
         io.stdout(`Created systemd service file at ${outputPath}`);
         return 0;
       } catch (e) {
@@ -511,50 +461,4 @@ async function resolveRepoRef(inputRepo?: string): Promise<string> {
   return inferred;
 }
 
-function renderSystemdEnvironment(environment?: Record<string, string | undefined>): string {
-  if (!environment) {
-    return "";
-  }
 
-  const lines = Object.entries(environment)
-    .filter(([, value]) => value !== undefined)
-    .map(([key, value]) => `Environment=${key}=${quoteSystemdValue(value as string)}`);
-
-  return lines.length > 0 ? `${lines.join("\n")}\n` : "";
-}
-
-function quoteSystemdValue(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
-}
-
-const DEFAULT_LOOP_CONFIG_TEMPLATE = `import { Models, defineConfig } from "@goddard-ai/config";
-
-export default defineConfig({
-  agent: {
-    model: Models.Anthropic.ClaudeSonnet45,
-    projectDir: "./",
-    thinkingLevel: "low"
-  },
-  strategy: {
-    nextPrompt: ({ cycleNumber, lastSummary }) =>
-      \`Cycle \${cycleNumber}. Last summary: \${lastSummary ?? "none"}. Make one safe improvement, then answer with SUMMARY|DONE when ready.\`
-  },
-  rateLimits: {
-    cycleDelay: "30m",
-    maxTokensPerCycle: 128000,
-    maxOpsPerMinute: 120,
-    maxCyclesBeforePause: 100
-  },
-  retries: {
-    maxAttempts: 3,
-    initialDelayMs: 1000,
-    maxDelayMs: 30000,
-    backoffFactor: 2,
-    jitterRatio: 0.2,
-    retryableErrors: () => true
-  },
-  metrics: {
-    enableLogging: true
-  }
-});
-`;

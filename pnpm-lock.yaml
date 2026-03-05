@@ -69,24 +69,9 @@ importers:
       '@clack/prompts':
         specifier: ^1.1.0
         version: 1.1.0
-      '@goddard-ai/config':
-        specifier: workspace:*
-        version: link:../core/config
-      '@goddard-ai/loop':
-        specifier: workspace:*
-        version: link:../core/loop
       '@goddard-ai/sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@goddard-ai/storage':
-        specifier: workspace:^
-        version: link:../core/storage
-      '@mariozechner/jiti':
-        specifier: ^2.6.1
-        version: 2.6.5
-      '@mariozechner/pi-coding-agent':
-        specifier: ^0.55.3
-        version: 0.55.4(ws@8.19.0)(zod@3.25.76)
       cmd-ts:
         specifier: ^0.15.0
         version: 0.15.0
@@ -198,12 +183,24 @@ importers:
 
   sdk:
     dependencies:
+      '@goddard-ai/config':
+        specifier: workspace:*
+        version: link:../core/config
+      '@goddard-ai/loop':
+        specifier: workspace:*
+        version: link:../core/loop
       '@goddard-ai/schema':
         specifier: workspace:^
         version: link:../core/schema
+      '@goddard-ai/storage':
+        specifier: workspace:^
+        version: link:../core/storage
       '@libsql/client':
         specifier: ^0.17.0
         version: 0.17.0
+      '@mariozechner/jiti':
+        specifier: ^2.6.5
+        version: 2.6.5
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.1(@cloudflare/workers-types@4.20260301.1)(@libsql/client@0.17.0)
@@ -3252,6 +3249,7 @@ packages:
 
   libsql@0.5.22:
     resolution: {integrity: sha512-NscWthMQt7fpU8lqd7LXMvT9pi+KhhmTHAJWUB/Lj6MWa0MKFv0F2V4C6WKKpjCVZl0VwcDz4nOI3CyaT1DDiA==}
+    cpu: [x64, arm64, wasm32, arm]
     os: [darwin, linux, win32]
 
   lie@3.3.0:
