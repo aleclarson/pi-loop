@@ -15,8 +15,7 @@ import {
 import * as routes from "@goddard-ai/schema/routes";
 import { createClient, type RouteRequest } from "rouzer";
 import { InMemoryTokenStorage, type TokenStorage } from "@goddard-ai/storage";
-import { init as initAgents, initLoopConfig, runLoop, generateLoopSystemdService, loadLoopConfig } from "./node/index.ts";
-import { Models, type Model } from "@goddard-ai/config";
+import { Models } from "@goddard-ai/config";
 
 export const SDK_VERSION = "0.1.0";
 
@@ -88,17 +87,6 @@ export class GoddardSdk {
 
   readonly stream: {
     subscribeToRepo: (repo: RepoRef) => Promise<StreamSubscription>;
-  };
-
-  readonly agents: {
-    init: (cwd?: string) => Promise<{ path: string }>;
-  };
-
-  readonly loop: {
-    init: (options: { global?: boolean }) => Promise<{ path: string }>;
-    run: (cwd?: string, deps?: { createLoopRuntime?: any }) => Promise<void>;
-    generateSystemdService: (cwd: string | undefined, options: { global?: boolean; user?: string }) => Promise<{ path: string }>;
-    loadConfig: (cwd?: string, options?: { global?: boolean }) => Promise<{ config: any; path: string }>;
   };
 
   readonly config: {
@@ -246,19 +234,6 @@ export class GoddardSdk {
       }
     };
 
-    this.agents = {
-      init: async (cwd) => {
-        return initAgents(cwd);
-      }
-    };
-
-    this.loop = {
-      init: initLoopConfig,
-      run: runLoop,
-      generateSystemdService: generateLoopSystemdService,
-      loadConfig: loadLoopConfig
-    };
-
     this.config = {
       models: Models
     };
@@ -397,9 +372,8 @@ export type {
   TokenStorage,
   GitHubWebhookInput
 };
-import { FileTokenStorage } from "@goddard-ai/storage";
 
-export { InMemoryTokenStorage, FileTokenStorage };
+export { InMemoryTokenStorage };
 export { SPEC_SYSTEM_PROMPT, PROPOSE_SYSTEM_PROMPT } from "./prompts.ts";
 export { LOOP_SYSTEM_PROMPT } from "@goddard-ai/loop";
 export type { GoddardLoopConfig } from "@goddard-ai/loop";
