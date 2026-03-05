@@ -14,7 +14,7 @@ import {
 } from "@goddard-ai/schema";
 import * as routes from "@goddard-ai/schema/routes";
 import { createClient, type RouteRequest } from "rouzer";
-import { InMemoryTokenStorage, type TokenStorage } from "./token-storage.ts";
+import { InMemoryTokenStorage, type TokenStorage } from "@goddard-ai/storage";
 import { appendSpecInstructions } from "./agents.ts";
 import { Models, type Model } from "@goddard-ai/config";
 import { initLoopConfig, runLoop, generateLoopSystemdService, loadLoopConfig } from "./loop.ts";
