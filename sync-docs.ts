@@ -30,6 +30,7 @@ import path from "node:path";
 
 interface SyncedDocsEntry {
   url: string;
+  name?: string;
   subfolder?: string;
   [key: string]: string | undefined;
 }
@@ -185,8 +186,8 @@ function resolveEntry(entry: SyncedDocsEntry): SyncedDocsEntry {
 // Core sync logic
 // ---------------------------------------------------------------------------
 
-function syncRepo(gitUrl: string, subfolder?: string): void {
-  const repoName = repoNameFromUrl(gitUrl);
+function syncRepo(gitUrl: string, subfolder?: string, name?: string): void {
+  const repoName = name ?? repoNameFromUrl(gitUrl);
   const targetBase = path.resolve("docs/third_party");
   const targetDir = path.join(targetBase, repoName);
 
@@ -279,7 +280,7 @@ if (gitUrl) {
     }
 
     log(`\n— ${entry.url}${entry.subfolder ? ` (${entry.subfolder})` : ""}`);
-    syncRepo(entry.url, entry.subfolder);
+    syncRepo(entry.url, entry.subfolder, entry.name);
   }
 
   log("\nAll repos synced.");

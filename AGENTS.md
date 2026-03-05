@@ -47,9 +47,13 @@ available to every agent without needing to pass arguments:
 ```json
 [
   { "url": "https://github.com/drizzle-team/drizzle-orm" },
-  { "url": "https://github.com/cloudflare/workers-sdk", "subfolder": "docs" }
+  { "url": "https://github.com/cloudflare/workers-sdk", "subfolder": "docs" },
+  { "url": "https://github.com/drizzle-team/drizzle-orm", "name": "drizzle" }
 ]
 ```
+
+The optional **`name`** field overrides the folder name under `docs/third_party/`.
+Without it the folder name is derived from the last segment of the repo URL.
 
 Running `pnpm sync-docs` (no arguments) will iterate the list and sync each entry.
 
@@ -94,9 +98,11 @@ stripped so the resolved value is a bare version string.
 
 ### Where docs land
 
-Clones are written to `docs/third_party/<repo-name>/`. After cloning, every file
-that is not a `*.md` file is deleted; only Markdown and the `.git/` bookkeeping
-folder survive. This keeps the directory lightweight and diff-free.
+Clones are written to `docs/third_party/<repo-name>/`, where `<repo-name>` is the
+last segment of the repo URL or the `name` field if one is set in `synced_docs.json`.
+After cloning, every file that is not a `*.md` file is deleted; only Markdown and
+the `.git/` bookkeeping folder survive. This keeps the directory lightweight and
+diff-free.
 
 `docs/third_party/` is listed in `.gitignore` — these fetched docs are never
 committed.
