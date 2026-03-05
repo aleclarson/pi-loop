@@ -49,6 +49,9 @@ jobs:
 
       - name: Push subrepos
         run: |
+          # Create and checkout a temporary branch for subrepo pushes
+          git checkout -b temp-sync-branch
+
           # If one subrepo has no changes, don't fail the whole job
           git subrepo push backend || true
           git subrepo push daemon || true
@@ -59,6 +62,14 @@ jobs:
 
       - name: Push .gitrepo updates to monorepo
         run: |
-          # git-subrepo updates .gitrepo state after successful pushes.
-          # Push those state updates back to main.
-          git push origin main
+          # Check out main branch and squash merge the temporary branch
+          git checkout main
+          git merge --squash temp-sync-branch
+
+          # If there are changes, commit them with a unified message and push
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: sync subrepos"
+            git push origin main
+          else
+            echo "No changes to sync."
+          fi
