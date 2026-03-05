@@ -15,7 +15,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.0.0",
-    "drizzle-kit": "0.22.8",
+    "drizzle-kit": "1.0.0-beta.16-ea816b6",
     "tsx": "^4.21.0",
     "typescript": "^5.0.0"
   },
@@ -23,6 +23,6 @@
     "@goddard-ai/sdk": "workspace:*",
     "@libsql/client": "^0.17.0",
     "better-sqlite3": "^12.6.2",
-    "drizzle-orm": "^0.30.10"
+    "drizzle-orm": "1.0.0-beta.16-ea816b6"
   }
 }
