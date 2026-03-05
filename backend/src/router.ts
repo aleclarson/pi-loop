@@ -88,6 +88,19 @@ export function createBackendRouter(dependencies: RouterDependencies = {}) {
         }
       }
     },
+    prReplyRoute: {
+      POST: async (ctx) => {
+        try {
+          const env = readEnv(ctx);
+          const controlPlane = createControlPlane(env);
+          const token = readBearerToken(ctx.headers.authorization);
+          await controlPlane.replyToPr(token, ctx.body, env);
+          return { success: true };
+        } catch (error) {
+          return toErrorResponse(error);
+        }
+      }
+    },
     githubWebhookRoute: {
       POST: async (ctx) => {
         try {
@@ -150,7 +163,9 @@ async function defaultHandleRepoStream(
 function readEnv(ctx: { env: <K extends keyof Env>(key: K) => Env[K] }): Env {
   return {
     TURSO_DB_URL: ctx.env("TURSO_DB_URL"),
-    TURSO_DB_AUTH_TOKEN: ctx.env("TURSO_DB_AUTH_TOKEN")
+    TURSO_DB_AUTH_TOKEN: ctx.env("TURSO_DB_AUTH_TOKEN"),
+    GITHUB_APP_ID: ctx.env("GITHUB_APP_ID"),
+    GITHUB_APP_PRIVATE_KEY: ctx.env("GITHUB_APP_PRIVATE_KEY")
   };
 }
 

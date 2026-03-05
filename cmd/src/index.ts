@@ -136,9 +136,37 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
     }
   });
 
+  const prReplyCmd = command({
+    name: "reply",
+    args: {
+      body: option({ type: string, long: "body" }),
+      pr: option({ type: string, long: "pr" }),
+      repo: option({ type: string, long: "repo", defaultValue: () => undefined as any }),
+      baseUrl: option({ type: string, long: "base-url", defaultValue: () => "" })
+    },
+    handler: async (args) => {
+      try {
+        const sdk = getSdk(args.baseUrl || undefined);
+        const repoRef = await resolveRepoRef(args.repo);
+        const { owner, repo } = splitRepo(repoRef);
+        await sdk.pr.reply({
+          owner,
+          repo,
+          prNumber: parseInt(args.pr, 10),
+          body: args.body
+        });
+        io.stdout(`Reply posted to PR #${args.pr}`);
+        return 0;
+      } catch (e) {
+        io.stderr(e instanceof Error ? e.message : String(e));
+        return 1;
+      }
+    }
+  });
+
   const prCmd = subcommands({
     name: "pr",
-    cmds: { create: prCreateCmd }
+    cmds: { create: prCreateCmd, reply: prReplyCmd }
   });
 
   const specCmd = command({

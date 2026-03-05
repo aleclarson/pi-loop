@@ -15,6 +15,7 @@ export interface BackendControlPlane {
   getSession(token: string): Promise<AuthSession> | AuthSession;
   createPr(token: string, input: CreatePrInput): Promise<PullRequestRecord> | PullRequestRecord;
   isManagedPr(owner: string, repo: string, prNumber: number, githubUsername: string): Promise<boolean> | boolean;
+  replyToPr(token: string, input: { owner: string; repo: string; prNumber: number; body: string }, env?: any): Promise<void> | void;
   handleGitHubWebhook(event: GitHubWebhookInput): Promise<RepoEvent> | RepoEvent;
   addStreamSocket?(repoKey: string, socket: unknown): void;
   removeStreamSocket?(repoKey: string, socket: unknown): void;

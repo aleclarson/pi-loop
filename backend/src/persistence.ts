@@ -14,12 +14,17 @@ import type {
 import { eq, and, gt } from "drizzle-orm";
 import { type BackendControlPlane, HttpError, assertRepo } from "./control-plane.ts";
 import { randomUUID } from "node:crypto";
+import type { Env } from "./env.ts";
+import { App } from "octokit";
 
 export class TursoBackendControlPlane implements BackendControlPlane {
   readonly #db: ReturnType<typeof drizzle<typeof schema>>;
 
-  constructor(client: Client) {
+  readonly #env?: Env;
+
+  constructor(client: Client, env?: Env) {
     this.#db = drizzle({ client, schema });
+    this.#env = env;
   }
 
   async startDeviceFlow(input: DeviceFlowStart = {}): Promise<DeviceFlowSession> {
@@ -131,6 +136,52 @@ export class TursoBackendControlPlane implements BackendControlPlane {
       .where(eq(schema.pullRequests.id, inserted.id));
 
     return { ...inserted, number: finalNumber, url: finalUrl, body: inserted.body ?? "" };
+  }
+
+  async replyToPr(token: string, input: { owner: string; repo: string; prNumber: number; body: string }, env?: Env): Promise<void> {
+    const session = await this.getSession(token);
+    assertRepo(input.owner, input.repo);
+    if (!input.body.trim()) {
+      throw new HttpError(400, "body is required");
+    }
+
+    const managed = await this.isManagedPr(input.owner, input.repo, input.prNumber, session.githubUsername);
+    if (!managed) {
+      throw new HttpError(403, "Cannot reply to a PR that is not managed by you");
+    }
+
+    if (!env?.GITHUB_APP_ID || !env?.GITHUB_APP_PRIVATE_KEY) {
+      throw new HttpError(500, "GitHub App credentials are not configured on the backend");
+    }
+
+    const app = new App({
+      appId: env.GITHUB_APP_ID,
+      privateKey: env.GITHUB_APP_PRIVATE_KEY
+    });
+
+    let installationId: number;
+    try {
+      const { data } = await app.octokit.request("GET /repos/{owner}/{repo}/installation", {
+        owner: input.owner,
+        repo: input.repo
+      });
+      installationId = data.id;
+    } catch (e) {
+      throw new HttpError(500, `Failed to get GitHub App installation for ${input.owner}/${input.repo}`);
+    }
+
+    const octokit = await app.getInstallationOctokit(installationId);
+
+    try {
+      await octokit.rest.issues.createComment({
+        owner: input.owner,
+        repo: input.repo,
+        issue_number: input.prNumber,
+        body: input.body
+      });
+    } catch (e: any) {
+      throw new HttpError(500, `Failed to post comment to GitHub: ${e.message}`);
+    }
   }
 
   async isManagedPr(owner: string, repo: string, prNumber: number, githubUsername: string): Promise<boolean> {
