@@ -1,0 +1,9 @@
+import { defineConfig } from 'tsdown';
+
+export default defineConfig({
+  entry: ['./bin/goddard.ts', './src/index.ts', './src/loop/index.ts'],
+  format: 'esm',
+  target: 'node18',
+  clean: true,
+  outDir: 'dist',
+});
