@@ -20,8 +20,10 @@
   },
   "scripts": {
     "goddard": "node dist/cli.mjs",
-    "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
+    "lint": "oxlint",
+    "fmt": "oxfmt",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test",
     "build": "tsdown"
   },
   "devDependencies": {

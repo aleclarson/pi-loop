@@ -27,7 +27,9 @@
     "deploy": "alchemy deploy",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "lint": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint",
+    "fmt": "oxfmt",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test"
   },
   "devDependencies": {
