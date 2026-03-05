@@ -1,5 +1,5 @@
-import { createClient } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
 import { join } from "node:path";
 import { getGoddardGlobalDir } from "./paths.ts";
 import * as schema from "./schema.ts";
@@ -13,8 +13,8 @@ let _dbInstance: ReturnType<typeof drizzle> | null = null;
 export function createLocalDb() {
   if (!_dbInstance) {
     const dbPath = getLocalDbPath();
-    const client = createClient({ url: `file:${dbPath}` });
-    _dbInstance = drizzle(client, { schema });
+    const sqlite = new Database(dbPath);
+    _dbInstance = drizzle(sqlite, { schema });
   }
   return _dbInstance;
 }

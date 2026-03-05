@@ -1,19 +1,22 @@
 import { createLocalDb } from "./db.ts";
-import { piSessions } from "./schema.ts";
-import { eq, sql } from "drizzle-orm";
+import * as schema from "./schema.ts";
+import { eq } from "drizzle-orm";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { getLocalDbPath } from "./db.ts";
+import Database from "better-sqlite3";
 
 export class LocalSessionStorage {
+  #dbPushed = false;
+
   async ensureDb() {
+    if (this.#dbPushed) return;
     const dbPath = getLocalDbPath();
     await mkdir(dirname(dbPath), { recursive: true });
 
-    // We create table if it doesn't exist to avoid needing a complex migration runner for the local SQLite db.
-    const db = createLocalDb();
-
-    await db.run(sql`
+    // Fallback: execute raw string. drizzle-kit api doesn't work in this specific env.
+    const sqlite = new Database(dbPath);
+    sqlite.exec(`
       CREATE TABLE IF NOT EXISTS pi_sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         repo_owner TEXT NOT NULL,
@@ -23,6 +26,8 @@ export class LocalSessionStorage {
         created_at TEXT NOT NULL
       )
     `);
+
+    this.#dbPushed = true;
   }
 
   async createSession(owner: string, repo: string, prNumber: number) {
@@ -31,7 +36,7 @@ export class LocalSessionStorage {
     const createdAt = new Date().toISOString();
 
     const [inserted] = await db
-      .insert(piSessions)
+      .insert(schema.piSessions)
       .values({
         repoOwner: owner,
         repoName: repo,
@@ -49,9 +54,9 @@ export class LocalSessionStorage {
     const db = createLocalDb();
 
     const [updated] = await db
-      .update(piSessions)
+      .update(schema.piSessions)
       .set({ status })
-      .where(eq(piSessions.id, id))
+      .where(eq(schema.piSessions.id, id))
       .returning();
 
     if (!updated) {
