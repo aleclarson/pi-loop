@@ -2,7 +2,7 @@
   "name": "@goddard-ai/loop",
   "version": "0.1.0",
   "license": "MIT",
-  "private": true,
+  "private": false,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
