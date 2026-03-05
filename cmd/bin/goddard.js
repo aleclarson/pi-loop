@@ -12,12 +12,12 @@ const hasGit = fs.existsSync(gitDir);
 
 if (hasGit) {
   // Use tsx in dev
-  const args = ['--import', 'tsx', path.join(__dirname, 'goddard.ts'), ...process.argv.slice(2)];
+  const args = ['--import', 'tsx', path.join(__dirname, '..', 'src', 'cli.ts'), ...process.argv.slice(2)];
   const result = spawnSync(process.execPath, args, { stdio: 'inherit' });
   process.exit(result.status || 0);
 } else {
-  // Use compiled goddard.mjs in production
-  import('../dist/bin/goddard.mjs').catch(err => {
+  // Use compiled cli.js in production
+  import('../dist/cli.js').catch(err => {
     console.error(err);
     process.exit(1);
   });

@@ -19,11 +19,11 @@
     "goddard": "./bin/goddard.js"
   },
   "exports": {
-    ".": "./dist/src/index.mjs",
-    "./loop": "./dist/src/loop/index.mjs"
+    ".": "./dist/index.js",
+    "./loop": "./dist/loop/index.js"
   },
   "scripts": {
-    "goddard": "tsx bin/goddard.ts",
+    "goddard": "tsx src/cli.ts",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test",
     "build": "tsdown"
