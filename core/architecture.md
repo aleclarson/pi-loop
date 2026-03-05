@@ -4,7 +4,7 @@
 | Layer | Technology |
 |-------|-----------|
 | API / Webhooks / SSE | Cloudflare Workers |
-| Real-time broadcast | Cloudflare Durable Objects |
+| Real-time broadcast | Server-Sent Events (SSE) / Cloudflare Workers |
 | Database | Turso (SQLite at the Edge) + Drizzle ORM |
 | Authentication | GitHub OAuth Device Flow |
 | Package management | `pnpm` Workspaces |
@@ -12,7 +12,7 @@
 
 ## Repository Topology
 Monorepo packages:
-- `backend/` — Worker control plane + Durable Object routing.
+- `backend/` — Worker control plane.
 - `github-app/` — GitHub App integration and webhook-facing behavior.
 - `sdk/` — framework-agnostic platform client (`@goddard-ai/sdk`).
 - `cmd/` — terminal UX for interactive and loop commands.
@@ -26,7 +26,7 @@ Each package can also be published as a standalone repository via subrepo sync.
 - Session validation on protected requests.
 - Webhook ingest and routing (`pull_request`, `issue_comment`, `pull_request_review`).
 - Managed reaction behavior via GitHub App identity.
-- Per-repo event fan-out over WebSocket through Durable Objects.
+- Per-repo event fan-out over SSE.
 
 Boundary:
 - Production persistence is Turso-backed.
@@ -54,10 +54,9 @@ Design rule: platform capabilities live here first.
 - `systemd` unit generation for supervised deployments.
 
 ## Deployment Model
-Target runtime is Cloudflare Workers with Durable Objects for per-repo fan-out.
+Target runtime is Cloudflare Workers.
 
 Production prerequisites:
 - Turso database.
 - Registered GitHub App with webhook delivery.
-- Durable Objects namespace binding.
 - Secret management through Cloudflare.

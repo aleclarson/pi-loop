@@ -24,7 +24,7 @@ Goddard addresses:
 | 4 | Autonomous control | Built-in orchestration runs `pi-coding-agent` with safety limits. |
 | 5 | Type safety | APIs and configuration are TypeScript-first with runtime validation. |
 | 6 | Operability | CLI and `systemd` outputs support practical deployment. |
-| 7 | Edge-native | Backend runs on Workers + Durable Objects for global fan-out. |
+| 7 | Edge-native | Backend runs on Workers for global fan-out. |
 
 ## Usage Modes
 
