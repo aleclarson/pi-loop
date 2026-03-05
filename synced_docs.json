@@ -1,2 +1,13 @@
 [
+  {
+    "name": "pi-coding-agent",
+    "url": "https://github.com/badlogic/pi-mono",
+    "subfolder": "packages/coding-agent/docs",
+    "ref": "v{{dependencies.@mariozechner/pi-coding-agent:cmd}}"
+  },
+  {
+    "name": "drizzle",
+    "url": "https://github.com/drizzle-team/drizzle-orm-docs",
+    "subfolder": "src/content/docs"
+  }
 ]
