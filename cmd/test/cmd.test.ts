@@ -205,7 +205,10 @@ test("agents init command calls sdk.agents.appendSpecInstructions and handles co
     { stdout: (line) => lines.push(line), stderr: (line) => lines.push(`ERR:${line}`) },
     {
       createSdkClient: () => sdk,
-      execGit: (cmd, args) => execGitCalls.push({ cmd, args }),
+      execGit: (cmd, args) => {
+        execGitCalls.push({ cmd, args });
+        return { status: 0, stdout: "", stderr: "" };
+      },
       promptCommitMessage: async () => "My custom config",
       promptPushBranch: async () => true,
     }
@@ -216,10 +219,10 @@ test("agents init command calls sdk.agents.appendSpecInstructions and handles co
   assert.equal(lines[1], "Committed changes: My custom config");
   assert.equal(lines[2], "Pushed changes successfully.");
 
-  assert.equal(execGitCalls.length, 3);
-  assert.deepEqual(execGitCalls[0], { cmd: "add", args: [`${process.cwd()}/AGENTS.md`] });
-  assert.deepEqual(execGitCalls[1], { cmd: "commit", args: ["-m", "My custom config"] });
-  assert.deepEqual(execGitCalls[2], { cmd: "push", args: [] });
+  assert.equal(execGitCalls.length, 5); // status, diff, add, commit, push
+  assert.deepEqual(execGitCalls[2], { cmd: "add", args: [`${process.cwd()}/AGENTS.md`] });
+  assert.deepEqual(execGitCalls[3], { cmd: "commit", args: ["-m", "My custom config"] });
+  assert.deepEqual(execGitCalls[4], { cmd: "push", args: [] });
 });
 
 test("agents init command allows skipping commit", async () => {
@@ -237,7 +240,10 @@ test("agents init command allows skipping commit", async () => {
     { stdout: (line) => lines.push(line), stderr: (line) => lines.push(`ERR:${line}`) },
     {
       createSdkClient: () => sdk,
-      execGit: (cmd, args) => execGitCalls.push({ cmd, args }),
+      execGit: (cmd, args) => {
+        execGitCalls.push({ cmd, args });
+        return { status: 0, stdout: "", stderr: "" };
+      },
       promptCommitMessage: async () => "",
       promptPushBranch: async () => true,
     }
@@ -247,7 +253,7 @@ test("agents init command allows skipping commit", async () => {
   assert.equal(lines[0], `Updated agents configuration at ${process.cwd()}/AGENTS.md`);
   assert.equal(lines[1], "Commit skipped.");
 
-  assert.equal(execGitCalls.length, 0);
+  assert.equal(execGitCalls.length, 2); // status, diff
 });
 
 test("agents init command allows skipping push", async () => {
@@ -265,7 +271,10 @@ test("agents init command allows skipping push", async () => {
     { stdout: (line) => lines.push(line), stderr: (line) => lines.push(`ERR:${line}`) },
     {
       createSdkClient: () => sdk,
-      execGit: (cmd, args) => execGitCalls.push({ cmd, args }),
+      execGit: (cmd, args) => {
+        execGitCalls.push({ cmd, args });
+        return { status: 0, stdout: "", stderr: "" };
+      },
       promptCommitMessage: async () => "My custom config",
       promptPushBranch: async () => false,
     }
@@ -276,7 +285,7 @@ test("agents init command allows skipping push", async () => {
   assert.equal(lines[1], "Committed changes: My custom config");
   assert.equal(lines[2], "Push skipped.");
 
-  assert.equal(execGitCalls.length, 2);
-  assert.deepEqual(execGitCalls[0], { cmd: "add", args: [`${process.cwd()}/AGENTS.md`] });
-  assert.deepEqual(execGitCalls[1], { cmd: "commit", args: ["-m", "My custom config"] });
+  assert.equal(execGitCalls.length, 4); // status, diff, add, commit
+  assert.deepEqual(execGitCalls[2], { cmd: "add", args: [`${process.cwd()}/AGENTS.md`] });
+  assert.deepEqual(execGitCalls[3], { cmd: "commit", args: ["-m", "My custom config"] });
 });

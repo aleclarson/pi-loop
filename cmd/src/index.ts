@@ -39,7 +39,7 @@ export type CliDeps = {
   /**
    * Injectable git operation runner for testing.
    */
-  execGit?: (command: string, args: string[]) => void;
+  execGit?: (command: string, args: string[]) => { status: number | null; stdout: string; stderr: string };
   /**
    * Injectable prompts for testing interactiveness.
    */
@@ -186,9 +186,30 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
     args: {},
     handler: async () => {
       try {
+        const execGit = deps.execGit ?? ((cmd: string, args: string[]) => {
+          const res = spawnSync("git", [cmd, ...args], { encoding: "utf-8" });
+          if (res.error) throw res.error;
+          return { status: res.status, stdout: res.stdout, stderr: res.stderr };
+        });
+
+        const statusRes = execGit("status", ["--porcelain", "**/AGENTS.md", "AGENTS.md"]);
+        if (statusRes.stdout.trim() !== "") {
+          io.stderr("Error: AGENTS.md has uncommitted changes. Please commit or stash them first.");
+          return 1;
+        }
+
         const sdk = getSdk();
         const agentsPath = await sdk.agents.appendSpecInstructions(process.cwd());
         io.stdout(`Updated agents configuration at ${agentsPath}`);
+
+        try {
+          const diffRes = execGit("diff", ["--", agentsPath]);
+          if (diffRes.stdout && diffRes.stdout.trim() !== "") {
+            io.stdout(diffRes.stdout);
+          }
+        } catch (e) {
+          // Ignore diff errors
+        }
 
         const promptCommitMessage = deps.promptCommitMessage ?? (async () => {
           return p.text({
@@ -210,15 +231,11 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
           return 0;
         }
 
-        const execGit = deps.execGit ?? ((cmd: string, args: string[]) => {
-          const res = spawnSync("git", [cmd, ...args], { stdio: "inherit" });
-          if (res.error) throw res.error;
-          if (res.status !== 0) throw new Error(`git ${cmd} exited with status ${res.status}`);
-        });
-
         try {
-          execGit("add", [agentsPath]);
-          execGit("commit", ["-m", msg]);
+          const addRes = execGit("add", [agentsPath]);
+          if (addRes.status !== 0) throw new Error(addRes.stderr);
+          const commitRes = execGit("commit", ["-m", msg]);
+          if (commitRes.status !== 0) throw new Error(commitRes.stderr);
           io.stdout(`Committed changes: ${msg}`);
         } catch (e) {
           io.stderr("Failed to commit changes.");
@@ -242,7 +259,8 @@ export async function runCli(argv: string[], io: CliIo = defaultIo, deps: CliDep
 
         if (shouldPush) {
           try {
-            execGit("push", []);
+            const pushRes = execGit("push", []);
+            if (pushRes.status !== 0) throw new Error(pushRes.stderr);
             io.stdout("Pushed changes successfully.");
           } catch (e) {
             io.stderr("Failed to push changes.");
