@@ -1,0 +1,34 @@
+{
+  "name": "tauri-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "tsc -p . --noEmit",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@preact/signals": "^2.8.1",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-global-shortcut": "^2.3.1",
+    "@tauri-apps/plugin-http": "^2.5.7",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-shell": "^2.3.5",
+    "@tauri-apps/plugin-store": "^2.4.2",
+    "fuse.js": "^7.1.0",
+    "preact": "^10.25.1",
+    "swr": "^2.4.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.3",
+    "@tauri-apps/cli": "^2",
+    "prettier": "3.8.1",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3"
+  }
+}
