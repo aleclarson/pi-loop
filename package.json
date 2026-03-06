@@ -22,7 +22,6 @@
     "vitest": "^1.0.0"
   },
   "scripts": {
-    "prepare": "husky",
     "fmt": "pnpm -r run fmt",
     "typecheck": "pnpm -r run typecheck",
     "lint": "pnpm -r run lint",
