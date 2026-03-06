@@ -2,16 +2,12 @@ import {
   createSdk,
   SPEC_SYSTEM_PROMPT,
   PROPOSE_SYSTEM_PROMPT,
-  LOOP_SYSTEM_PROMPT,
 } from "@goddard-ai/sdk"
 import { FileTokenStorage } from "@goddard-ai/sdk/node"
 import type { GoddardLoopConfig } from "@goddard-ai/sdk"
 import { inferRepoFromGitConfig, inferPrNumberFromGit, splitRepo } from "./git.ts"
 import { spawnSync } from "node:child_process"
-import { access } from "node:fs/promises"
-import { constants as fsConstants } from "node:fs"
 import * as p from "@clack/prompts"
-import { dirname, join } from "node:path"
 import { command, runSafely, string, option, subcommands, restPositionals, flag } from "cmd-ts"
 
 export type CliIo = {
@@ -270,7 +266,7 @@ export async function runCli(
           if (diffRes.stdout && diffRes.stdout.trim() !== "") {
             io.stdout(diffRes.stdout)
           }
-        } catch (e) {
+        } catch {
           // Ignore diff errors
         }
 

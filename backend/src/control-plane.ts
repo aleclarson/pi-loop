@@ -71,7 +71,7 @@ export async function postPrCommentViaApp(
       repo,
     })
     installationId = data.id
-  } catch (e) {
+  } catch {
     throw new HttpError(500, `Failed to get GitHub App installation for ${owner}/${repo}`)
   }
 

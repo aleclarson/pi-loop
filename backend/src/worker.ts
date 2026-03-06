@@ -18,7 +18,7 @@ export default {
   fetch: adapter(router),
 } satisfies ExportedHandler<Env>
 
-function createSseStream(request: Request): Response {
+function createSseStream(_request: Request): Response {
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream<Uint8Array>({

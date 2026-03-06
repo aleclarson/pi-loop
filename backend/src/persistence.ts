@@ -1,4 +1,4 @@
-import { createClient, type Client } from "@libsql/client"
+import { type Client } from "@libsql/client"
 import { drizzle } from "drizzle-orm/libsql"
 import * as schema from "./schema.ts"
 import type {
@@ -24,15 +24,11 @@ import type { Env } from "./env.ts"
 export class TursoBackendControlPlane implements BackendControlPlane {
   readonly #db: ReturnType<typeof drizzle<typeof schema>>
 
-  readonly #env?: Env
-
-  constructor(client: Client, env?: Env) {
+  constructor(client: Client, _env?: Env) {
     this.#db = drizzle({ client, schema })
-    this.#env = env
   }
 
-  async startDeviceFlow(input: DeviceFlowStart = {}): Promise<DeviceFlowSession> {
-    const githubUsername = input.githubUsername?.trim() || "developer"
+  async startDeviceFlow(_input: DeviceFlowStart = {}): Promise<DeviceFlowSession> {
     const deviceCode = `dev_${randomUUID()}`
     const userCode = randomUUID().slice(0, 8).toUpperCase()
     const expiresIn = 900

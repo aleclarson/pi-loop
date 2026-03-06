@@ -94,7 +94,7 @@ export class GoddardGitHubApp {
         }
       })
 
-      this.app.webhooks.on("pull_request", async ({ octokit, payload }) => {
+      this.app.webhooks.on("pull_request", async ({ payload }) => {
         console.log(
           `Received pull_request event: ${payload.action} for PR #${payload.pull_request.number}`,
         )

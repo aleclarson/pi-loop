@@ -193,8 +193,8 @@ async function defaultRunOneShot(input: OneShotInput): Promise<number> {
       console.error("Cannot proceed with one-shot pi session. Aborting.\n")
       return 1
     }
-  } catch (e) {
-    console.error(`\n[ERROR] Exception thrown while creating agent workspace at ${worktreeDir}:`, e)
+  } catch {
+    console.error(`\n[ERROR] Exception thrown while creating agent workspace at ${worktreeDir}:`)
     return 1
   }
 
@@ -208,7 +208,7 @@ async function defaultRunOneShot(input: OneShotInput): Promise<number> {
       cwd: worktreeDir,
       stdio: "ignore",
     })
-  } catch (e) {
+  } catch {
     // Ignore error
   }
 
