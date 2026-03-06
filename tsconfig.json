@@ -4,6 +4,7 @@
     "types": ["node", "@cloudflare/workers-types"]
   },
   "include": [
+    "raw.d.ts",
     "sdk/src/**/*.ts",
     "sdk/test/**/*.ts",
     "backend/src/**/*.ts",
