@@ -1,14 +1,9 @@
 {
   "name": "@goddard-ai/github-app",
   "version": "0.1.0",
-  "license": "AGPL-3.0-or-later",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "type": "module",
-  "dependencies": {
-    "@goddard-ai/sdk": "workspace:*",
-    "@octokit/webhooks": "^14.2.0",
-    "octokit": "^5.0.5"
-  },
   "exports": {
     ".": "./src/index.ts"
   },
@@ -18,6 +13,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "build": "tsdown"
+  },
+  "dependencies": {
+    "@goddard-ai/sdk": "workspace:*",
+    "@octokit/webhooks": "^14.2.0",
+    "octokit": "^5.0.5"
   },
   "devDependencies": {
     "tsdown": "^0.20.3"
