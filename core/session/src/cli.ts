@@ -96,10 +96,22 @@ export async function runSessionCli(argv: string[]): Promise<number> {
     },
   })
 
+  const piRpcCmd = command({
+    name: "pi-rpc",
+    args: {
+      ...resumeArg(),
+      ...promptArgs(),
+    },
+    handler: async (args) => {
+      return await runDriver("pi-rpc", { resume: args.resume || undefined, prompt: args.prompt })
+    },
+  })
+
   const app = subcommands({
     name: "session",
     cmds: {
       pi: piCmd,
+      "pi-rpc": piRpcCmd,
       gemini: geminiCmd,
       codex: codexCmd,
       pty: ptyCmd,
@@ -107,17 +119,20 @@ export async function runSessionCli(argv: string[]): Promise<number> {
   })
 
   const result = await runSafely(app, argv)
-  if (result._tag === "failure") {
-    process.stderr.write(`${result.error.message}\n`)
-    return result.error.config.exitCode
+  if (result._tag === "error") {
+    const error = (result as any).error
+    process.stderr.write(`${error?.message || "Unknown error"}\n`)
+    return error?.config?.exitCode || 1
   }
 
-  if (typeof result.value === "number") {
-    return result.value
+  const value = (result as any).value
+
+  if (typeof value === "number") {
+    return value
   }
 
-  if (result.value && typeof (result.value as { value?: number }).value === "number") {
-    return (result.value as { value: number }).value
+  if (value && typeof (value as { value?: number }).value === "number") {
+    return (value as { value: number }).value
   }
 
   return 0

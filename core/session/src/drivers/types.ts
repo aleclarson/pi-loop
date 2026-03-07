@@ -1,4 +1,4 @@
-export type SessionDriverName = "pi" | "gemini" | "codex" | "pty"
+export type SessionDriverName = "pi" | "pi-rpc" | "gemini" | "codex" | "pty"
 
 export interface SessionDriverInput {
   resume?: string
