@@ -33,10 +33,9 @@ async function walk(dir, onFile) {
 async function ensureExecutable(filePath) {
   try {
     const stats = await lstat(filePath)
-    const executableMode = stats.mode | 0o111
-    await chmod(filePath, executableMode)
+    await chmod(filePath, stats.mode | 0o111)
   } catch {
-    // Ignore filesystems/platforms that do not support chmod semantics.
+    // Ignore chmod failures on platforms/filesystems without POSIX mode support.
   }
 }
 

@@ -16,8 +16,7 @@
     "lint": "oxlint",
     "fmt": "oxfmt",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "postinstall": "node ./scripts/postinstall.mjs"
+    "test": "vitest run"
   },
   "dependencies": {
     "@mariozechner/pi-coding-agent": "^0.57.0",
