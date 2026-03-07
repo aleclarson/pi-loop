@@ -1,14 +1,16 @@
-name: CI
+name: Publish to npm
 
 on:
-  pull_request:
   push:
-    branches:
-      - main
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
 
 jobs:
-  check:
+  publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # needed for provenance
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,6 +23,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -28,5 +31,7 @@ jobs:
       - name: Build
         run: pnpm -r run build
 
-      - name: Typecheck and test
-        run: pnpm run check
+      - name: Publish
+        run: pnpm -r publish --access public --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
