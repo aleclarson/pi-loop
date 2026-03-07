@@ -103,24 +103,7 @@ export type CycleContext = z.infer<typeof cycleContextSchema>
 
 // ---------------------------------------------------------------------------
 // CycleStrategy
-//
-// Functions cannot be expressed as first-class zod schemas, so we define the
-// shape as a private type and pass it as the generic to z.custom<>. The
-// exported CycleStrategy is still derived via z.infer so consumers always get
-// the type from the schema rather than from a separate hand-written interface.
 // ---------------------------------------------------------------------------
-
-type _CycleStrategyShape = {
-  nextPrompt(ctx: CycleContext): string
-}
-
-const cycleStrategySchema = z.custom<_CycleStrategyShape>(
-  (val) =>
-    typeof val === "object" &&
-    val !== null &&
-    typeof (val as _CycleStrategyShape).nextPrompt === "function",
-  "Strategy must have a nextPrompt method",
-)
 
 /**
  * Determines the prompt sent to the agent at the start of each cycle.
@@ -138,7 +121,17 @@ const cycleStrategySchema = z.custom<_CycleStrategyShape>(
  * };
  * ```
  */
-export type CycleStrategy = z.infer<typeof cycleStrategySchema>
+export type CycleStrategy = {
+  nextPrompt(ctx: CycleContext): string
+}
+
+const cycleStrategySchema = z.custom<CycleStrategy>(
+  (val) =>
+    typeof val === "object" &&
+    val !== null &&
+    typeof (val as CycleStrategy).nextPrompt === "function",
+  "Strategy must have a nextPrompt method",
+)
 
 // ---------------------------------------------------------------------------
 // Agent sub-schema
@@ -257,7 +250,7 @@ export const configSchema = z
         /** Override the systemd `WorkingDirectory`. Defaults to the project directory. */
         workingDir: z.string().optional(),
         /** Additional environment variables injected into the service unit. */
-        environment: z.record(z.string().optional()).optional(),
+        environment: z.record(z.string(), z.string().optional()).optional(),
       })
       .optional(),
   })
@@ -268,7 +261,7 @@ export const configSchema = z
       config.retries.maxDelayMs < config.retries.initialDelayMs
     ) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         path: ["retries", "maxDelayMs"],
         message: `retries.maxDelayMs (${config.retries.maxDelayMs}) must be >= retries.initialDelayMs (${config.retries.initialDelayMs}).`,
       })
