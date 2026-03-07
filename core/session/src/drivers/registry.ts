@@ -2,6 +2,7 @@ import type { SessionDriver, SessionDriverName } from "./types.ts"
 
 const EMBEDDED_DRIVER_IMPORTS: Record<SessionDriverName, string> = {
   pi: "./pi.ts",
+  "pi-rpc": "./pi-rpc.ts",
   gemini: "./gemini.ts",
   codex: "./codex.ts",
   pty: "./pty.ts",
