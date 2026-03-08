@@ -16,8 +16,8 @@ import {
   HttpError,
   assertRepo,
   postPrCommentViaApp,
-} from "./control-plane.ts"
-import { createBackendRouter } from "./router.ts"
+} from "./api/control-plane.ts"
+import { createBackendRouter } from "./api/router.ts"
 
 type SessionRecord = AuthSession & { expiresAt: number }
 type DeviceSessionRecord = { githubUsername: string; createdAt: number; expiresAt: number }

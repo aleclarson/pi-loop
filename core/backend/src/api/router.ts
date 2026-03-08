@@ -2,9 +2,9 @@ import { createClient } from "@libsql/client/web"
 import { type RepoEvent } from "@goddard-ai/schema"
 import * as routes from "@goddard-ai/schema/routes"
 import { createRouter } from "rouzer"
-import { TursoBackendControlPlane } from "./persistence.ts"
+import { TursoBackendControlPlane } from "../db/persistence.ts"
 import { HttpError, assertRepo, type BackendControlPlane } from "./control-plane.ts"
-import type { Env } from "./env.ts"
+import type { Env } from "../env.ts"
 
 type RouterDependencies = {
   createControlPlane?: (env: Env) => BackendControlPlane

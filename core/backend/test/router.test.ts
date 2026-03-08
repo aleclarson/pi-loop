@@ -1,6 +1,6 @@
 import { test, assert } from "vitest"
-import { createBackendRouter } from "../src/router.ts"
-import { HttpError, type BackendControlPlane } from "../src/control-plane.ts"
+import { createBackendRouter } from "../src/api/router.ts"
+import { HttpError, type BackendControlPlane } from "../src/api/control-plane.ts"
 import type { Env } from "../src/env.ts"
 
 const notUsed = () => {

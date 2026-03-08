@@ -1,6 +1,6 @@
 import adapter from "@hattip/adapter-cloudflare-workers/no-static"
 import type { Env } from "./env.ts"
-import { createBackendRouter } from "./router.ts"
+import { createBackendRouter } from "./api/router.ts"
 
 const router = createBackendRouter({
   broadcastToRepo: async (_env, _owner, _repo, _event) => {

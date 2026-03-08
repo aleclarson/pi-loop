@@ -17,9 +17,9 @@ import {
   HttpError,
   assertRepo,
   postPrCommentViaApp,
-} from "./control-plane.ts"
+} from "../api/control-plane.ts"
 import { randomUUID } from "node:crypto"
-import type { Env } from "./env.ts"
+import type { Env } from "../env.ts"
 
 export class TursoBackendControlPlane implements BackendControlPlane {
   readonly #db: ReturnType<typeof drizzle<typeof schema>>
