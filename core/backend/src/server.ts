@@ -1,5 +1,5 @@
 import { InMemoryBackendControlPlane, startBackendServer } from "./index.ts"
-import { TursoBackendControlPlane } from "./persistence.ts"
+import { TursoBackendControlPlane } from "./db/persistence.ts"
 import { createClient } from "@libsql/client"
 
 const port = Number(process.env.PORT ?? "8787")

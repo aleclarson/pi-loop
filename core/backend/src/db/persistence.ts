@@ -17,9 +17,10 @@ import {
   HttpError,
   assertRepo,
   postPrCommentViaApp,
-} from "./control-plane.ts"
+} from "../api/control-plane.ts"
 import { randomUUID } from "node:crypto"
-import type { Env } from "./env.ts"
+import type { Env } from "../env.ts"
+import { hashToInteger } from "../utils.ts"
 
 export class TursoBackendControlPlane implements BackendControlPlane {
   readonly #db: ReturnType<typeof drizzle<typeof schema>>
@@ -217,13 +218,4 @@ export class TursoBackendControlPlane implements BackendControlPlane {
 
     return mapped
   }
-}
-
-function hashToInteger(value: string): number {
-  let hash = 0
-  for (let i = 0; i < value.length; i += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(i)
-    hash |= 0
-  }
-  return Math.abs(hash) + 1000
 }

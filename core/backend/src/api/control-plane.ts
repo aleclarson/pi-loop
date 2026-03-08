@@ -39,7 +39,7 @@ export class HttpError extends Error {
   }
 }
 
-import type { Env } from "./env.ts"
+import type { Env } from "../env.ts"
 
 export function assertRepo(owner: string, repo: string): void {
   if (!owner?.trim() || !repo?.trim()) {
