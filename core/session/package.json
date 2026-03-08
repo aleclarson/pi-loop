@@ -3,33 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
-  "bin": {
-    "session": "./bin/session"
-  },
   "type": "module",
   "exports": {
-    ".": "./src/server.ts",
-    "./drivers": "./src/drivers/index.ts",
-    "./cli": "./src/cli.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "lint": "oxlint",
     "fmt": "oxfmt",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@goddard-ai/session-protocol": "workspace:^",
-    "@mariozechner/pi-coding-agent": "^0.57.0",
-    "@xterm/headless": "^6.0.0",
-    "cmd-ts": "^0.15.0",
-    "json-rpc-2.0": "^1.7.1",
-    "node-pty": "^1.1.0",
-    "ws": "^8.19.0"
+    "@agentclientprotocol/sdk": "^0.15.0",
+    "better-sqlite3": "^12.6.2",
+    "drizzle-kit": "1.0.0-beta.16-ea816b6",
+    "drizzle-orm": "1.0.0-beta.16-ea816b6"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.3.5",
-    "@types/ws": "^8.18.1",
     "tsx": "^4.21.0"
   }
 }
