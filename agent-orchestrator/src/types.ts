@@ -1,6 +1,5 @@
 export type ProviderId =
   | "google-jules"
-  | "openai-codex-cloud"
   | "cursor-cloud";
 
 export type Repo =
