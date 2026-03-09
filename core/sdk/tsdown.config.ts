@@ -12,6 +12,6 @@ export default defineConfig({
   },
   plugins: [unpluginRaw()],
   deps: {
-    onlyAllowBundle: false
-  }
+    onlyAllowBundle: false,
+  },
 })

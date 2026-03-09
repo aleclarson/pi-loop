@@ -1,12 +1,12 @@
 import { drizzle } from "drizzle-orm/better-sqlite3"
 import Database from "better-sqlite3"
 import path from "node:path"
-import os from "node:os"
 import fs from "node:fs"
 import * as schema from "./schema.js"
 import { eq } from "drizzle-orm"
+import { getGoddardGlobalDir, getDatabasePath } from "../paths.js"
 
-const dir = path.join(os.homedir(), ".goddard")
+const dir = getGoddardGlobalDir()
 if (!fs.existsSync(dir)) {
   fs.mkdirSync(dir, { recursive: true })
 }
@@ -15,7 +15,7 @@ let sqlite: Database.Database | undefined
 export let db: ReturnType<typeof drizzle> | undefined
 
 try {
-  sqlite = new Database(path.join(dir, "session.db"))
+  sqlite = new Database(getDatabasePath())
   db = drizzle({ client: sqlite, schema })
 } catch (e) {
   console.warn("Failed to initialize database", e)
@@ -23,7 +23,11 @@ try {
 
 export * as dbSchema from "./schema.js"
 
-export async function insertMessage(sessionId: string, type: string, payload: string) {
+export async function insertMessage(
+  sessionId: string,
+  type: string,
+  payload: Record<string, unknown>,
+) {
   if (!db) throw new Error("Database not initialized")
   await db.insert(schema.messages).values({
     sessionId,

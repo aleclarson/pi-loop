@@ -15,6 +15,10 @@ export function getLocalConfigPath(): string {
   return join(process.cwd(), ".goddard", "config.ts")
 }
 
+export function getDatabasePath(): string {
+  return join(getGoddardGlobalDir(), "goddard.db")
+}
+
 export async function fileExists(path: string): Promise<boolean> {
   try {
     await access(path, fsConstants.F_OK)

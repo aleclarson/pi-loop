@@ -1,23 +1,25 @@
+import mri from "mri"
 import { SessionServer } from "./server.js"
 
 async function main() {
-  let agentName: string | undefined
-  let resumeId: string | undefined
+  const argv = process.argv.slice(2)
+  const args = mri(argv, {
+    string: ["resume"],
+  })
 
-  for (let i = 2; i < process.argv.length; i++) {
-    if (process.argv[i] === "--resume") {
-      resumeId = process.argv[++i]
-    } else if (!agentName) {
-      agentName = process.argv[i]
-    }
-  }
+  const agentName = args._[0]
+  const resumeId = args.resume
 
   if (!agentName) {
     console.error("Usage: goddard-session <agent-name> [--resume <id>]")
     process.exit(1)
   }
 
-  const server = new SessionServer(agentName)
+  const server = new SessionServer(agentName, async (params) => {
+    // This allows stdout to forward permission requests back up the pipe
+    console.log(JSON.stringify({ type: "permission_request", ...params }))
+    return { outcome: { outcome: "cancelled" } }
+  })
 
   if (resumeId) {
     await server.loadSession({ sessionId: resumeId, mcpServers: [], cwd: process.cwd() })

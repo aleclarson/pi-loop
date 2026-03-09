@@ -10,13 +10,20 @@ import { insertMessage, getMessagesBySessionId } from "@goddard-ai/storage"
 import { fetchRegistryAgent } from "./registry.js"
 import { spawn, ChildProcess } from "node:child_process"
 
+export type PermissionCallback = (
+  params: schema.RequestPermissionRequest,
+) => Promise<schema.RequestPermissionResponse>
+
 export class SessionServer implements Agent {
   private sessionId: string | null = null
   private agentProcess: ChildProcess | null = null
   private agentConnection: ClientSideConnection | null = null
   private serverConnection: AgentSideConnection | null = null
 
-  constructor(private agentName: string) {}
+  constructor(
+    private agentName: string,
+    private onPermissionRequest?: PermissionCallback,
+  ) {}
 
   async initialize(_params: schema.InitializeRequest): Promise<schema.InitializeResponse> {
     return {
@@ -71,7 +78,7 @@ export class SessionServer implements Agent {
     const stream = ndJsonStream(writableStream, readableStream)
 
     this.agentConnection = new ClientSideConnection(
-      () => new GoddardClient(this.sessionId!, this.serverConnection!),
+      () => new GoddardClient(this.sessionId!, this.serverConnection!, this.onPermissionRequest),
       stream,
     )
 
@@ -115,7 +122,11 @@ export class SessionServer implements Agent {
       throw new Error("No active session")
     }
 
-    await insertMessage(this.sessionId, "session/prompt", JSON.stringify(params))
+    await insertMessage(
+      this.sessionId,
+      "session/prompt",
+      params as unknown as Record<string, unknown>,
+    )
 
     if (!this.agentConnection) {
       throw new Error("Agent connection not initialized")
@@ -130,7 +141,11 @@ export class SessionServer implements Agent {
     params: schema.SetSessionModeRequest,
   ): Promise<schema.SetSessionModeResponse | void> {
     if (!this.sessionId) return
-    await insertMessage(this.sessionId, "session/set_mode", JSON.stringify(params))
+    await insertMessage(
+      this.sessionId,
+      "session/set_mode",
+      params as unknown as Record<string, unknown>,
+    )
     if (this.agentConnection?.setSessionMode) {
       return this.agentConnection.setSessionMode(params)
     }
@@ -142,7 +157,11 @@ export class SessionServer implements Agent {
     if (!this.sessionId) {
       throw new Error("No active session")
     }
-    await insertMessage(this.sessionId, "session/set_config_option", JSON.stringify(params))
+    await insertMessage(
+      this.sessionId,
+      "session/set_config_option",
+      params as unknown as Record<string, unknown>,
+    )
     if (this.agentConnection?.setSessionConfigOption) {
       return this.agentConnection.setSessionConfigOption(params)
     }
@@ -201,18 +220,26 @@ class GoddardClient implements Client {
   constructor(
     private sessionId: string,
     private serverConnection: AgentSideConnection,
+    private onPermissionRequest?: PermissionCallback,
   ) {}
 
   async requestPermission(
-    _params: schema.RequestPermissionRequest,
+    params: schema.RequestPermissionRequest,
   ): Promise<schema.RequestPermissionResponse> {
+    if (this.onPermissionRequest) {
+      return this.onPermissionRequest(params)
+    }
     return {
       outcome: { outcome: "cancelled" },
     }
   }
 
   async sessionUpdate(params: schema.SessionNotification): Promise<void> {
-    await insertMessage(this.sessionId, "session/update", JSON.stringify(params))
+    await insertMessage(
+      this.sessionId,
+      "session/update",
+      params as unknown as Record<string, unknown>,
+    )
 
     // Proxy the session update up to the connected client
     await this.serverConnection.sessionUpdate(params)

@@ -15,9 +15,11 @@
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "^0.15.0",
-    "@goddard-ai/storage": "workspace:^"
+    "@goddard-ai/storage": "workspace:^",
+    "mri": "^1.2.0"
   },
   "devDependencies": {
+    "@types/mri": "^1.2.0",
     "@types/node": "^25.3.5",
     "tsx": "^4.21.0"
   }
