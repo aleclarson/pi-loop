@@ -1,6 +1,6 @@
 import { createClient } from "@libsql/client/web"
-import { type RepoEvent } from "@goddard-ai/schema"
-import * as routes from "@goddard-ai/schema/routes"
+import type { RepoEvent } from "@goddard-ai/schema/backend"
+import * as routes from "@goddard-ai/schema/backend/routes"
 import { createRouter } from "rouzer"
 import { TursoBackendControlPlane } from "../db/persistence.ts"
 import { HttpError, assertRepo, type BackendControlPlane } from "./control-plane.ts"

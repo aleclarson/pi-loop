@@ -11,8 +11,8 @@ import {
   type RepoRef,
   type StreamMessage,
   type ThinkingLevel,
-} from "@goddard-ai/schema"
-import * as routes from "@goddard-ai/schema/routes"
+} from "@goddard-ai/schema/backend"
+import * as routes from "@goddard-ai/schema/backend/routes"
 import { createClient, type RouteRequest } from "rouzer"
 import { InMemoryTokenStorage, type TokenStorage } from "@goddard-ai/storage"
 import { Models } from "@goddard-ai/config"
