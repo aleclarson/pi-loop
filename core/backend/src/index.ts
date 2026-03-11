@@ -1,6 +1,6 @@
 import { createServer as createNodeServer } from "@hattip/adapter-node"
 import type { Env } from "./env.ts"
-import { type RepoEvent } from "@goddard-ai/schema"
+import { type RepoEvent } from "@goddard-ai/schema/backend"
 import { type BackendControlPlane } from "./api/control-plane.ts"
 import { createBackendRouter } from "./api/router.ts"
 import { createSseSession } from "./utils.ts"
