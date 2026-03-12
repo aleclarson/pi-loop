@@ -104,7 +104,7 @@ function runBuild(pkgPath: string): Promise<void> {
 
   return new Promise((resolve, reject) => {
     // We can use any package manager, but sticking with 'npm' for now
-    const child = spawn('npm', ['run', buildCommand], {
+    const child = spawn('npm', ['run', buildCommand, '--if-present'], {
       cwd: pkgPath,
       stdio: 'inherit',
       shell: true
