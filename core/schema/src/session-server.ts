@@ -12,6 +12,11 @@ interface BaseSessionParams {
   agent: string | AgentDistribution
   cwd: string
   mcpServers: acp.McpServer[]
+  metadata?: {
+    repository?: string
+    prNumber?: number
+    [key: string]: any
+  }
 }
 
 export interface NewSessionParams extends BaseSessionParams {
@@ -30,7 +35,7 @@ export type SessionParams =
   | (NewSessionParams &
       (
         | { initialPrompt?: string | acp.ContentBlock[]; oneShot?: undefined }
-        | { initialPrompt: string | acp.ContentBlock[]; oneShot?: boolean }
+        | { initialPrompt: string | acp.ContentBlock[]; oneShot: true }
       ))
 
 export const SessionServerLog = z.union([
@@ -38,6 +43,12 @@ export const SessionServerLog = z.union([
     success: z.literal(true),
     serverAddress: z.string(),
     serverId: z.string(),
+    sessionId: z.string(),
+  }),
+  z.object({
+    success: z.literal(true),
+    serverAddress: z.null(),
+    serverId: z.null(),
     sessionId: z.string(),
   }),
   z.object({

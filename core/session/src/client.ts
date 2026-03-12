@@ -94,6 +94,9 @@ async function startSessionServer(params: SessionParams) {
   if (!startupLog.success) {
     throw new Error(`Failed to start session server: ${startupLog.error}`)
   }
+  if (!startupLog.serverId) {
+    return null
+  }
 
   serverProcess.stdout.destroy()
   serverProcess.unref()
@@ -104,7 +107,25 @@ async function startSessionServer(params: SessionParams) {
   }
 }
 
-export async function runAgent(params: SessionParams, handler?: acp.Client): Promise<AgentSession> {
+export async function runAgent(
+  params: SessionParams & { oneShot: true },
+  handler?: acp.Client,
+): Promise<null>
+
+export async function runAgent(
+  params: SessionParams & { oneShot?: undefined },
+  handler?: acp.Client,
+): Promise<AgentSession>
+
+export async function runAgent(
+  params: SessionParams,
+  handler?: acp.Client,
+): Promise<AgentSession | null>
+
+export async function runAgent(
+  params: SessionParams,
+  handler?: acp.Client,
+): Promise<AgentSession | null> {
   let activeSessionId = params.sessionId
   let serverAddress = ""
   let serverProcess: ChildProcess | undefined
@@ -118,6 +139,10 @@ export async function runAgent(params: SessionParams, handler?: acp.Client): Pro
 
   if (!serverAddress) {
     const result = await startSessionServer(params)
+    if (!result) {
+      return null
+    }
+
     serverProcess = result.serverProcess
     serverAddress = result.startupLog.serverAddress
     activeSessionId = result.startupLog.sessionId

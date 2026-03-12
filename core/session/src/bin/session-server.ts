@@ -10,13 +10,22 @@ function log(message: SessionServerLog) {
 export async function main(argv: string[]) {
   const agentParams = JSON.parse(argv[0]) as SessionParams
   const serverId = randomUUID()
-  const startedServer = await serveAgent(serverId, agentParams)
-  log({
-    success: true,
-    serverAddress: startedServer.serverAddress.href,
-    serverId,
-    sessionId: startedServer.sessionId,
-  })
+  const { serverAddress, sessionId } = await serveAgent(serverId, agentParams)
+  if (serverAddress) {
+    log({
+      success: true,
+      serverAddress: serverAddress.href,
+      serverId,
+      sessionId,
+    })
+  } else {
+    log({
+      success: true,
+      serverAddress: null,
+      serverId: null,
+      sessionId,
+    })
+  }
 }
 
 if (import.meta.main) {
