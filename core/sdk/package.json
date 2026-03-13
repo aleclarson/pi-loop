@@ -4,8 +4,16 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": "./dist/index.mjs",
-    "./node": "./dist/node/index.mjs"
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./src/index.ts"
+    },
+    "./node": {
+      "types": "./dist/node/index.d.mts",
+      "import": "./dist/node/index.mjs",
+      "default": "./src/node/index.ts"
+    }
   },
   "scripts": {
     "lint": "oxlint",
