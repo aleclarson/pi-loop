@@ -17,8 +17,10 @@
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "^0.15.0",
+    "@goddard-ai/loop": "workspace:^",
     "@goddard-ai/schema": "workspace:^",
     "@goddard-ai/storage": "workspace:^",
+    "@mariozechner/jiti": "^2.6.5",
     "@types/ws": "^8.18.1",
     "cmd-ts": "^0.13.0",
     "reconnecting-websocket": "^4.4.0",

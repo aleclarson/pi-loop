@@ -8,6 +8,9 @@ import { Readable, Writable } from "node:stream"
 import { serve } from "srvx"
 import manifest from "../package.json" assert { type: "json" }
 import { createAgentConnection, getAcpMessageResult, isAcpRequest, matchAcpRequest } from "./acp.js"
+import { createLoop } from "@goddard-ai/loop"
+import { createJiti } from "@mariozechner/jiti"
+import { resolveLoopConfigPath } from "@goddard-ai/storage"
 import { createWebSocketHandler } from "./node/websocket-server.js"
 import { fetchRegistryAgent } from "./registry.js"
 import SYSTEM_PROMPT from "./system-prompt.md?raw"
@@ -72,8 +75,8 @@ export function sessionStatusFromAgentMessage(
 export function shouldExitAfterInitialPrompt(params: SessionParams): boolean {
   return (
     !isPropertyDefined(params, "sessionId") &&
-    params.oneShot === true &&
-    params.initialPrompt !== undefined
+    ("oneShot" in params && params.oneShot === true) &&
+    ("initialPrompt" in params && params.initialPrompt !== undefined)
   )
 }
 
@@ -185,15 +188,15 @@ async function initializeSession(input: Writable, output: Readable, params: Sess
     }
 
     const newSession = await agent.newSession(params)
-    if (params.initialPrompt) {
-      const prompt = params.initialPrompt
+    if ("initialPrompt" in params && params.initialPrompt) {
+      const prompt = (params as any).initialPrompt as string | acp.ContentBlock[]
       const promptRequest = injectSystemPrompt(
         {
           sessionId: newSession.sessionId,
           prompt: typeof prompt === "string" ? [{ type: "text", text: prompt }] : prompt,
         },
         SYSTEM_PROMPT,
-        params.appendSystemPrompt,
+        ("appendSystemPrompt" in params ? params.appendSystemPrompt as string : undefined),
       )
 
       history.push({
@@ -228,6 +231,17 @@ type AcpPromptRequest = acp.AnyMessage & {
   params: acp.PromptRequest
 }
 
+
+async function loadLoopConfig(cwd: string) {
+  const configPath = await resolveLoopConfigPath()
+  if (!configPath) throw new Error("Could not find config.ts in .goddard/ folder or ~/.goddard.")
+  const jiti = createJiti(cwd)
+  const module = await jiti.import(configPath)
+  const config = (module as any).default ?? module
+  if (!config) throw new Error("Config file must export a default configuration object.")
+  return config
+}
+
 export async function serveAgent(serverId: string, params: SessionParams) {
   const agentProcess = await spawnAgentProcess(serverId, params)
   const agentConnection = createAgentConnection(agentProcess.stdin, agentProcess.stdout)
@@ -242,6 +256,7 @@ export async function serveAgent(serverId: string, params: SessionParams) {
   }
 
   const clientRequests: AcpRequestMap = new Map()
+  const responseCallbacks = new Map<string | number, (response: acp.AnyMessage) => void>()
   const agentInput = agentConnection.getWriter()
 
   const wss = createWebSocketHandler({
@@ -302,11 +317,69 @@ export async function serveAgent(serverId: string, params: SessionParams) {
       if (clientRequest) {
         clientRequests.delete(message.id)
       }
+      const cb = responseCallbacks.get(message.id)
+      if (cb) {
+        cb(message)
+        responseCallbacks.delete(message.id)
+      }
     }
 
     session.history.push(message)
     wss.broadcast(message)
   })
+
+
+  let loopPromise: Promise<void> | null = null;
+  if (params.loop) {
+    const config = await loadLoopConfig(params.cwd || process.cwd());
+    let tokensUsed = 0;
+    let lastAssistantMessage = "";
+
+    const loopSession = {
+      async sendUserMessage(prompt: string) {
+        return new Promise<void>((resolve, reject) => {
+          const reqId = Date.now();
+          const promptRequest = {
+            sessionId: session.sessionId,
+            prompt: [{ type: "text", text: prompt }],
+          };
+          const message: acp.AnyMessage = {
+            jsonrpc: "2.0",
+            id: reqId,
+            method: acp.AGENT_METHODS.session_prompt,
+            params: promptRequest,
+          };
+
+          clientRequests.set(reqId, message as any);
+
+          responseCallbacks.set(reqId, (response: acp.AnyMessage) => {
+            if ("result" in response) {
+              const res = (response as any).result;
+              if (res?.tokens?.total) tokensUsed += res.tokens.total;
+              if (res?.content) {
+                 const t = res.content.find((c: any) => c.type === "text");
+                 if (t) lastAssistantMessage = t.text;
+              }
+            }
+            resolve();
+          });
+
+          session.history.push(message);
+          wss.broadcast(message);
+          agentInput.write(message).catch(reject);
+        });
+      },
+      getSessionStats() {
+        return { tokens: { total: tokensUsed } };
+      },
+      getLastAssistantText() {
+        return lastAssistantMessage;
+      }
+    };
+
+    const loop = createLoop(config as any, loopSession, { showWarning: console.warn, stop: () => {} });
+    loopPromise = loop.start().catch(console.error);
+  }
 
   let shuttingDown = false
 

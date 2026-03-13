@@ -2,6 +2,7 @@ import { createJiti } from "@mariozechner/jiti"
 import { dirname, join } from "node:path"
 import { mkdir, writeFile } from "node:fs/promises"
 import { createLoop, type GoddardLoopConfig } from "@goddard-ai/loop"
+import { runAgent } from "@goddard-ai/session"
 import {
   getGlobalConfigPath,
   getLocalConfigPath,
@@ -58,12 +59,22 @@ export async function loadLoopConfig(
 
 export async function runLoop(
   cwd: string = process.cwd(),
-  deps?: { createLoopRuntime?: typeof createLoop },
 ): Promise<void> {
   const { config } = await loadLoopConfig(cwd)
-  const runtime = deps?.createLoopRuntime ?? createLoop
-  const loop = runtime(config)
-  await loop.start()
+
+  const mcpServers: any[] = [] // Need to map mcp servers if present
+  const agentSession = await runAgent({
+    agent: config.agent.model || "anthropic",
+    cwd,
+    mcpServers,
+    loop: true,
+  });
+
+  return new Promise((resolve) => {
+    (agentSession as any)["ws"].addEventListener("close", () => {
+       resolve();
+    });
+  });
 }
 
 function quoteSystemdValue(value: string): string {

@@ -1,10 +1,16 @@
 import type { GoddardLoop, GoddardLoopConfig } from "./types.ts";
 import { configSchema } from "./types.ts";
 import { RateLimiter } from "./rate-limiter.ts";
-import { AuthStorage, ModelRegistry, createAgentSession, InteractiveMode } from "@mariozechner/pi-coding-agent";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
+
+export interface LoopSession {
+  sendUserMessage(prompt: string): Promise<void>;
+  getSessionStats(): { tokens: { total: number } };
+  getLastAssistantText(): string | undefined;
+}
+
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -20,58 +26,9 @@ function withJitter(delayMs: number, jitterRatio: number): number {
   return Math.round(min + Math.random() * (max - min));
 }
 
-function resolveAgentDir(configuredDir?: string): string | undefined {
-  if (configuredDir) {
-    if (configuredDir.startsWith("~/")) {
-      return join(homedir(), configuredDir.slice(2));
-    }
-    return configuredDir;
-  }
 
-  const piAgentDir = join(homedir(), ".pi", "agent");
-  if (existsSync(piAgentDir)) {
-    return piAgentDir;
-  }
 
-  return undefined;
-}
 
-function resolveConfiguredModel(modelRef: string, agentDir?: string) {
-  const authPath = agentDir ? join(agentDir, "auth.json") : undefined;
-  const modelsPath = agentDir ? join(agentDir, "models.json") : undefined;
-
-  const authStorage = AuthStorage.create(authPath);
-  const modelRegistry = new ModelRegistry(authStorage, modelsPath);
-
-  if (modelRef.includes("/")) {
-    const [provider, ...idParts] = modelRef.split("/");
-    const modelId = idParts.join("/");
-
-    if (!provider || !modelId) {
-      throw new Error(`Invalid model format "${modelRef}". Use "provider/modelId" or "modelId".`);
-    }
-
-    const model = modelRegistry.find(provider, modelId);
-    if (!model) {
-      throw new Error(`Unknown model "${modelRef}". Verify provider/modelId in pi-coding-agent models.`);
-    }
-
-    return model;
-  }
-
-  const matches = modelRegistry.getAll().filter((model) => model.id === modelRef);
-
-  if (matches.length === 0) {
-    throw new Error(`Unknown model id "${modelRef}". Use "provider/modelId" for explicit selection.`);
-  }
-
-  if (matches.length > 1) {
-    const options = matches.map((model) => `${model.provider}/${model.id}`).join(", ");
-    throw new Error(`Ambiguous model id "${modelRef}". Use one of: ${options}`);
-  }
-
-  return matches[0];
-}
 
 function isDoneSignal(text: string | undefined): boolean {
   if (!text) {
@@ -90,7 +47,7 @@ function isDoneSignal(text: string | undefined): boolean {
   return /(^|\n)\s*DONE\s*$/i.test(text);
 }
 
-export function createLoop(config: GoddardLoopConfig): GoddardLoop {
+export function createLoop(config: GoddardLoopConfig, session: LoopSession, ui?: { showWarning(msg: string): void, stop(): void }): GoddardLoop {
   const validated = configSchema.parse(config);
   const limiter = new RateLimiter(validated.rateLimits);
   const strategy = validated.strategy;
@@ -118,32 +75,15 @@ export function createLoop(config: GoddardLoopConfig): GoddardLoop {
     status.uptime = 0;
     status.startTime = Date.now();
 
-    const resolvedAgentDir = resolveAgentDir(validated.agent.agentDir);
-    const configuredModel = resolveConfiguredModel(validated.agent.model, resolvedAgentDir);
-
-    const { session } = await createAgentSession({
-      cwd: validated.agent.projectDir,
-      model: configuredModel,
-      thinkingLevel: validated.agent.thinkingLevel,
-      agentDir: resolvedAgentDir
-    });
-
-    const ui = new InteractiveMode(session);
-    await ui.init();
-
-    const onSigint = () => {
-      ui.stop();
-      process.exit(0);
-    };
-    process.on("SIGINT", onSigint);
-
     try {
       while (true) {
         status.cycle += 1;
         status.uptime = Date.now() - status.startTime;
 
         const countdownPause = async (delayMs: number) => {
-          ui.showWarning(`Rate limit reached. Pausing loop for ${Math.round(delayMs / 1000)} seconds...`);
+          if (ui) {
+            ui.showWarning(`Rate limit reached. Pausing loop for ${Math.round(delayMs / 1000)} seconds...`);
+          }
           await sleep(delayMs);
         };
 
@@ -218,8 +158,9 @@ export function createLoop(config: GoddardLoopConfig): GoddardLoop {
         }
       }
     } finally {
-      ui.stop();
-      process.removeListener("SIGINT", onSigint);
+      if (ui) {
+        ui.stop();
+      }
     }
   };
 

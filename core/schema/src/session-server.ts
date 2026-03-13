@@ -12,6 +12,7 @@ interface BaseSessionParams {
   agent: string | AgentDistribution
   cwd: string
   mcpServers: acp.McpServer[]
+  loop?: boolean
 }
 
 export interface NewSessionParams extends BaseSessionParams {
