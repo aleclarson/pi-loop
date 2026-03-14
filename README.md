@@ -38,8 +38,8 @@ Project Goddard provides a comprehensive toolkit for bringing an autonomous codi
 
 To balance open-source flexibility with the sustainability of our platform, this monorepo utilizes a dual-licensing strategy:
 
-- The root of the monorepo and specific services—such as the Backend service (`@goddard-ai/backend`)—are licensed under the **GNU Affero General Public License v3.0 (AGPLv3)**.
-- Reusable integration libraries and specific sub-packages—such as the SDK (`@goddard-ai/sdk`), the CLI (`@goddard-ai/cmd`), and the background daemon (`@goddard-ai/daemon`)—are licensed under the permissive **MIT License**. This allows for widespread adoption, easier integration into your own tools, and prevents virality for consumers of the SDK.
+- Specific services—such as the Backend service (`@goddard-ai/backend`)—are licensed under the **GNU Affero General Public License v3.0 (AGPLv3)**.
+- The root of the monorepo, reusable integration libraries, and specific sub-packages—such as the App (`app`), the SDK (`@goddard-ai/sdk`), the CLI (`@goddard-ai/cmd`), and the background daemon (`@goddard-ai/daemon`)—are licensed under the permissive **MIT License**. This allows for widespread adoption, easier integration into your own tools, and prevents virality for consumers of the SDK.
 
 Please see the `LICENSE` file in the root directory and the respective `LICENSE` files in the subdirectories for exact legal details.
 
