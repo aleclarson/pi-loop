@@ -1,7 +1,6 @@
 import { z } from "zod"
-import type { LoopStrategy, LoopContext } from "@goddard-ai/schema/loop";
-export type { LoopStrategy, LoopContext };
-
+import type { LoopStrategy, LoopContext } from "@goddard-ai/schema/loop"
+export type { LoopStrategy, LoopContext }
 
 // ---------------------------------------------------------------------------
 // Models

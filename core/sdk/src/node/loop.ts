@@ -66,9 +66,9 @@ export async function runAgentLoop(
   await coreRunAgentLoop(
     {
       ...config,
-      ...overrides
+      ...overrides,
     } as any,
-    handler
+    handler,
   )
 }
 
