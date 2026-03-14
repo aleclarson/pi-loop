@@ -9,7 +9,6 @@ export const defaultPlugin: WorktreePlugin = {
   },
 
   setup(projectDir: string, prNumber: number, branchName: string): string | null {
-    console.log(`[INFO] Falling back to legacy copy-on-write workspace setup...`)
     const agentsDir = `${projectDir}/.goddard-agents`
     const worktreeDir = `${agentsDir}/${branchName}-${Date.now()}`
 
@@ -26,30 +25,20 @@ export const defaultPlugin: WorktreePlugin = {
       }
 
       let cloneResult = spawnSync("cp", cpArgs, { encoding: "utf8" })
-      let fallbackAttempted = false
 
       if (cloneResult.status !== 0 && process.platform === "darwin") {
         // Fallback to regular copy if APFS clone fails on macOS
-        fallbackAttempted = true
         cpArgs = ["-R", projectDir + "/", worktreeDir]
         cloneResult = spawnSync("cp", cpArgs, { encoding: "utf8" })
       }
 
       if (cloneResult.status !== 0) {
-        console.error(`\n[ERROR] Failed to create agent workspace at ${worktreeDir}`)
-        if (fallbackAttempted) {
-          console.error("Attempted APFS clone (cp -cR) and fallback copy (cp -R). Both failed.")
-        }
-        console.error(`Last attempted command: cp ${cpArgs.join(" ")}`)
-        if (cloneResult.stderr) console.error(`Error output: ${cloneResult.stderr.trim()}`)
-        if (cloneResult.error) console.error(`System error: ${cloneResult.error.message}`)
         throw new Error(`Cannot proceed with one-shot pi session. Aborting.\n`)
       }
     } catch (err) {
       if (err instanceof Error && err.message.includes("Cannot proceed")) {
         throw err
       }
-      console.error(`\n[ERROR] Exception thrown while creating agent workspace at ${worktreeDir}:`)
       throw new Error("Failed to create workspace")
     }
 

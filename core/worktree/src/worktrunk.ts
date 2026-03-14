@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process"
+import * as fs from "node:fs"
+import * as path from "node:path"
 import type { WorktreePlugin } from "./types.js"
 
 export const worktrunkPlugin: WorktreePlugin = {
@@ -11,19 +13,14 @@ export const worktrunkPlugin: WorktreePlugin = {
         return false
       }
 
-      // Check if the current project is a valid worktrunk environment by executing `wt list`
-      const listResult = spawnSync("wt", ["list"], {
-        cwd: projectDir,
-        stdio: "ignore",
-      })
-      return listResult.status === 0
+      // Check if the current project is a valid worktrunk environment by checking for .config/wt.toml
+      return fs.existsSync(path.join(projectDir, ".config", "wt.toml"))
     } catch {
       return false
     }
   },
 
   setup(projectDir: string, prNumber: number, branchName: string): string | null {
-    console.log(`\n[INFO] Worktrunk detected. Attempting to use it for PR workspace setup...`)
     try {
       const switchResult = spawnSync("wt", ["switch", `pr:${prNumber}`], {
         cwd: projectDir,
@@ -44,9 +41,6 @@ export const worktrunkPlugin: WorktreePlugin = {
             if (line.includes(`[${branchName}]`)) {
               const wtPath = line.split(" ")[0]
               if (wtPath) {
-                console.log(
-                  `[INFO] Successfully created and switched to Worktrunk workspace at ${wtPath}`,
-                )
                 return wtPath
               }
             }
@@ -57,9 +51,6 @@ export const worktrunkPlugin: WorktreePlugin = {
       // Edge case: Worktrunk switch succeeded but we couldn't find the path.
       // Let's try to remove it before falling back so we don't leak it.
       if (switchResult.status === 0) {
-        console.log(
-          `[WARN] Worktrunk switch succeeded but failed to locate worktree path. Attempting to clean it up.`,
-        )
         spawnSync("wt", ["remove", branchName], {
           cwd: projectDir,
           encoding: "utf8",
@@ -83,12 +74,10 @@ export const worktrunkPlugin: WorktreePlugin = {
       })
 
       if (result.status === 0 && !result.error) {
-        console.log(`[INFO] Successfully cleaned up Worktrunk workspace.`)
         return true
       }
-      console.log(`[WARN] Worktrunk removal failed.`)
     } catch {
-      console.log(`[WARN] Worktrunk removal exception.`)
+      // Cleanup failed
     }
 
     return false

@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { Worktree } from "../src/index.ts"
 import * as childProcess from "node:child_process"
+import * as fs from "node:fs"
 
 vi.mock("node:child_process", () => ({
   spawnSync: vi.fn(() => ({ status: 0, stdout: "" })),
+}))
+
+vi.mock("node:fs", () => ({
+  existsSync: vi.fn(() => false),
 }))
 
 describe("Worktree", () => {
@@ -16,6 +21,7 @@ describe("Worktree", () => {
       if (cmd === "wt" && args?.[0] === "--version") return { status: 1, stdout: "", error: undefined } as any
       return { status: 0, stdout: "", error: undefined } as any
     })
+    vi.mocked(fs.existsSync).mockReturnValue(false)
 
     const projectDir = "/test/dir"
     const prNumber = 123
@@ -42,6 +48,7 @@ describe("Worktree", () => {
       if (cmd === "git") return { status: 1, stdout: "", error: undefined } as any
       return { status: 0, stdout: "", error: undefined } as any
     })
+    vi.mocked(fs.existsSync).mockReturnValue(false)
 
     const projectDir = "/test/dir"
     const prNumber = 123
@@ -54,13 +61,13 @@ describe("Worktree", () => {
   it("should use worktrunk if available", () => {
     vi.mocked(childProcess.spawnSync).mockImplementation((cmd, args) => {
       if (cmd === "wt" && args?.[0] === "--version") return { status: 0, stdout: "1.0.0", error: undefined } as any
-      if (cmd === "wt" && args?.[0] === "list") return { status: 0, stdout: "", error: undefined } as any
       if (cmd === "wt" && args?.[0] === "switch") return { status: 0, stdout: "", error: undefined } as any
       if (cmd === "git" && args?.[0] === "worktree" && args?.[1] === "list") {
         return { status: 0, stdout: "/test/dir/.wt/pr-123 e1234 [pr-123]\n/test/dir main [main]", error: undefined } as any
       }
       return { status: 0, stdout: "", error: undefined } as any
     })
+    vi.mocked(fs.existsSync).mockImplementation((p) => String(p).includes(".config/wt.toml"))
 
     const projectDir = "/test/dir"
     const prNumber = 123
@@ -82,13 +89,13 @@ describe("Worktree", () => {
   it("should dynamically fallback to default plugin if worktrunk setup returns null", () => {
     vi.mocked(childProcess.spawnSync).mockImplementation((cmd, args) => {
       if (cmd === "wt" && args?.[0] === "--version") return { status: 0, stdout: "1.0.0", error: undefined } as any
-      if (cmd === "wt" && args?.[0] === "list") return { status: 0, stdout: "", error: undefined } as any
 
       // Simulate worktrunk switch failing, causing it to return null
       if (cmd === "wt" && args?.[0] === "switch") return { status: 1, stdout: "", error: undefined } as any
 
       return { status: 0, stdout: "", error: undefined } as any
     })
+    vi.mocked(fs.existsSync).mockImplementation((p) => String(p).includes(".config/wt.toml"))
 
     const projectDir = "/test/dir"
     const prNumber = 123
@@ -125,6 +132,7 @@ describe("cleanupWorktree", () => {
       if (cmd === "wt" && args?.[0] === "--version") return { status: 1, stdout: "", error: undefined } as any
       return { status: 0, stdout: "", error: undefined } as any
     })
+    vi.mocked(fs.existsSync).mockReturnValue(false)
 
     const worktree = new Worktree({ projectDir: "/test/dir" })
     worktree.cleanup("/test/dir/.goddard-agents/pr-123-1234", "pr-123")
@@ -138,6 +146,7 @@ describe("cleanupWorktree", () => {
       if (cmd === "wt" && args?.[0] === "remove") return { status: 0, stdout: "", error: undefined } as any
       return { status: 0, stdout: "", error: undefined } as any
     })
+    vi.mocked(fs.existsSync).mockImplementation((p) => String(p).includes(".config/wt.toml"))
 
     const worktree = new Worktree({ projectDir: "/test/dir" })
     worktree.cleanup("/test/dir/.wt/pr-123", "pr-123")

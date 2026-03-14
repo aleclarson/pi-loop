@@ -12,13 +12,12 @@ export interface WorktreeOptions {
 export class Worktree {
   readonly projectDir: string
   plugin: WorktreePlugin
-  private readonly candidates: WorktreePlugin[]
 
   constructor(options: WorktreeOptions) {
     this.projectDir = options.projectDir
 
-    this.candidates = [...(options.plugins || []), worktrunkPlugin]
-    this.plugin = this.candidates.find((p) => p.isApplicable(this.projectDir)) || defaultPlugin
+    const candidates = [...(options.plugins || []), worktrunkPlugin]
+    this.plugin = candidates.find((p) => p.isApplicable(this.projectDir)) || defaultPlugin
   }
 
   setup(prNumber: number): { worktreeDir: string; branchName: string; isWorktrunk: boolean } {
@@ -52,7 +51,7 @@ export class Worktree {
     try {
       worktreeDir = defaultPlugin.setup(this.projectDir, prNumber, branchName)
     } catch {
-       // Intentionally left blank as default plugin logs its own errors
+       // Intentionally left blank, fallback failure is handled immediately below
     }
 
     if (!worktreeDir) {
