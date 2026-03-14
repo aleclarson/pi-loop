@@ -33,10 +33,10 @@ export const defaultPlugin: WorktreePlugin = {
       }
 
       if (cloneResult.status !== 0) {
-        throw new Error(`Cannot proceed with one-shot pi session. Aborting.`)
+        throw new Error(`cp command exited with code ${cloneResult.status}`)
       }
     } catch (err) {
-      if (err instanceof Error && err.message.includes("Cannot proceed")) {
+      if (err instanceof Error && err.message.includes("cp command exited with code")) {
         throw err
       }
       throw new Error(
