@@ -99,6 +99,9 @@ importers:
       '@libsql/client':
         specifier: ^0.17.0
         version: 0.17.0
+      '@octokit/webhooks':
+        specifier: ^14.2.0
+        version: 14.2.0
       alchemy:
         specifier: ^0.87.0
         version: 0.87.0(@libsql/client@0.17.0)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.2)(vite@7.3.1(@types/node@25.3.5)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260301.1)(wrangler@4.71.0(@cloudflare/workers-types@4.20260307.1))
@@ -305,22 +308,6 @@ importers:
       '@goddard-ai/config':
         specifier: workspace:^
         version: link:../core/config
-      tsdown:
-        specifier: ^0.21.0
-        version: 0.21.0(typescript@5.9.3)
-
-  github-app:
-    dependencies:
-      '@octokit/webhooks':
-        specifier: ^14.2.0
-        version: 14.2.0
-      octokit:
-        specifier: ^5.0.5
-        version: 5.0.5
-    devDependencies:
-      '@goddard-ai/schema':
-        specifier: workspace:^
-        version: link:../core/schema
       tsdown:
         specifier: ^0.21.0
         version: 0.21.0(typescript@5.9.3)
