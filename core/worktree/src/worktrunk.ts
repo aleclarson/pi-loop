@@ -8,13 +8,13 @@ export const worktrunkPlugin: WorktreePlugin = {
 
   isApplicable(cwd: string): boolean {
     try {
-      const versionResult = spawnSync("wt", ["--version"])
-      if (versionResult.status !== 0) {
+      // Check if the current project is a valid worktrunk environment by checking for .config/wt.toml
+      if (!fs.existsSync(path.join(cwd, ".config", "wt.toml"))) {
         return false
       }
 
-      // Check if the current project is a valid worktrunk environment by checking for .config/wt.toml
-      return fs.existsSync(path.join(cwd, ".config", "wt.toml"))
+      const versionResult = spawnSync("wt", ["--version"])
+      return versionResult.status === 0
     } catch {
       return false
     }
