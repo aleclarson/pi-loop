@@ -5,7 +5,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
+      "import": "./dist/index.mjs",
+      "default": "./src/index.ts"
     }
   },
   "scripts": {
@@ -15,7 +16,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests"
   },
-  "dependencies": {},
   "devDependencies": {
     "@types/node": "^25.3.5"
   }
