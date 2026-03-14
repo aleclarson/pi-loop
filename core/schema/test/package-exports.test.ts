@@ -13,6 +13,7 @@ describe("schema package exports", () => {
     }
 
     expect(packageJson.exports).toEqual({
+      ".": "./src/index.ts",
       "./*": "./src/*.ts",
     })
   })

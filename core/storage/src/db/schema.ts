@@ -21,4 +21,5 @@ export const sessions = sqliteTable("sessions", {
   serverId: text().unique(),
   serverAddress: text(),
   serverPid: integer(),
+  metadata: text({ mode: "json" }).$type<{ repository?: string; prNumber?: number; [key: string]: any }>(),
 })
