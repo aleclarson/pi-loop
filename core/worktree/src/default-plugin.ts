@@ -25,8 +25,9 @@ export const defaultPlugin: WorktreePlugin = {
       // Use system temp directory if no specific directory is present, appending hash to prevent collisions
       const hash = crypto.createHash("sha256").update(options.cwd).digest("hex").substring(0, 7)
       agentsDirPath = path.join(
-        os.tmpdir(),
-        "goddard-worktrees",
+        os.homedir(),
+        ".goddard",
+        "worktrees",
         `${path.basename(options.cwd)}-${hash}`,
       )
     }

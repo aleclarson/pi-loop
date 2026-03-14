@@ -43,7 +43,7 @@ describe("Worktree", () => {
     )
   })
 
-  it("should fall back to os.tmpdir() if no .worktrees directory exists and no override is provided", () => {
+  it("should fall back to ~/.goddard/worktrees/ if no .worktrees directory exists and no override is provided", () => {
     vi.mocked(childProcess.spawnSync).mockImplementation((cmd, args) => {
       if (cmd === "wt" && args?.[0] === "--version")
         return { status: 1, stdout: "", error: undefined } as any
@@ -57,10 +57,10 @@ describe("Worktree", () => {
     const result = worktree.setup(branchName)
 
     // Hash of '/test/dir' is approx: 9b2d...
-    expect(result.worktreeDir).toMatch(/\/goddard-worktrees\/dir-[a-f0-9]{7}\/pr-123-\d+$/)
+    expect(result.worktreeDir).toMatch(/\/\.goddard\/worktrees\/dir-[a-f0-9]{7}\/pr-123-\d+$/)
     expect(childProcess.spawnSync).toHaveBeenCalledWith("mkdir", [
       "-p",
-      expect.stringMatching(/\/goddard-worktrees\/dir-[a-f0-9]{7}$/),
+      expect.stringMatching(/\/\.goddard\/worktrees\/dir-[a-f0-9]{7}$/),
     ])
   })
 
