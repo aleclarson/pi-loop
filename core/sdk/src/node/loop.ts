@@ -71,7 +71,13 @@ export async function runLoop(
       initialPrompt: undefined,
       oneShot: undefined,
     },
-    strategy: config.strategy
+    strategy: config.strategy,
+    rateLimits: {
+      cycleDelay: config.rateLimits?.cycleDelay,
+      maxTokensPerCycle: config.rateLimits?.maxTokensPerCycle,
+      maxOpsPerMinute: config.rateLimits?.maxOpsPerMinute,
+      maxCyclesBeforePause: config.rateLimits?.maxCyclesBeforePause
+    }
   })
 }
 

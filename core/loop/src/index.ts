@@ -4,7 +4,7 @@ import { RateLimiter } from "./rate-limiter.ts";
 import { runAgent, type AgentSession } from "@goddard-ai/session";
 import type * as acp from "@agentclientprotocol/sdk";
 import type { SessionParams } from "@goddard-ai/schema/session-server";
-import type { CycleStrategy } from "@goddard-ai/config";
+import type { AgentLoopParams, LoopStrategy } from "@goddard-ai/schema/loop";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
@@ -41,7 +41,7 @@ function isDoneSignal(text: string | undefined): boolean {
 }
 
 export async function runAgentLoop(
-  { session: sessionParams, strategy }: { session: SessionParams & { oneShot?: undefined }, strategy: CycleStrategy },
+  { session: sessionParams, strategy, rateLimits }: AgentLoopParams,
   handler?: acp.Client
 ): Promise<AgentSession> {
   const retryConfig = {
@@ -146,7 +146,8 @@ export function createGoddardConfig(config: GoddardLoopConfig): GoddardLoopConfi
   return config;
 }
 
-export type { CycleContext, CycleStrategy, GoddardLoopConfig, PiAgentConfig } from "./types.ts";
+export type { GoddardLoopConfig, PiAgentConfig } from "./types.ts";
+export type { LoopContext, LoopStrategy } from "@goddard-ai/schema/loop";
 export { DefaultStrategy } from "./strategies.ts";
 export { Models, type Model } from "@goddard-ai/config";
 export { LOOP_SYSTEM_PROMPT } from "./prompts.ts";

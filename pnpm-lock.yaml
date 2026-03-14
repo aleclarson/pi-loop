@@ -136,6 +136,9 @@ importers:
 
   core/config:
     dependencies:
+      '@goddard-ai/schema':
+        specifier: workspace:*
+        version: link:../schema
       zod:
         specifier: ^4.3.6
         version: 4.3.6
