@@ -20,6 +20,9 @@ importers:
       oxlint:
         specifier: ^1.51.0
         version: 1.51.0
+      radashi:
+        specifier: ^12.7.2
+        version: 12.7.2
       tsdown:
         specifier: ^0.21.0
         version: 0.21.0(typescript@5.9.3)
@@ -267,6 +270,12 @@ importers:
       '@goddard-ai/sdk':
         specifier: workspace:*
         version: link:../core/sdk
+      '@goddard-ai/session':
+        specifier: workspace:*
+        version: link:../core/session
+      '@goddard-ai/storage':
+        specifier: workspace:*
+        version: link:../core/storage
       '@xterm/headless':
         specifier: ^6.0.0
         version: 6.0.0
@@ -4165,6 +4174,10 @@ packages:
 
   quansync@1.0.0:
     resolution: {integrity: sha512-5xZacEEufv3HSTPQuchrvV6soaiACMFnq1H8wkVioctoH3TRha9Sz66lOxRwPK/qZj7HPiSveih9yAyh98gvqA==}
+
+  radashi@12.7.2:
+    resolution: {integrity: sha512-BfoN4XJll34ok3rCHjVlRypymJvD3cE+M3UATC8519wUgHl1/AXt2dEEIFv5865gO6t0ENAU6qEOqjr/NcIRyQ==}
+    engines: {node: '>=16.0.0'}
 
   rc@1.2.8:
     resolution: {integrity: sha512-y3bGgqKj3QBdxLbLkomlohkvsA8gdAiUQlSBJnBhfn+BPxg4bc62d8TcBW15wavDfgexCgccckhcZvywyQYPOw==}
@@ -8603,6 +8616,8 @@ snapshots:
       once: 1.4.0
 
   quansync@1.0.0: {}
+
+  radashi@12.7.2: {}
 
   rc@1.2.8:
     dependencies:

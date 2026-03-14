@@ -5,6 +5,7 @@ import { SessionStorage, SQLSessionUpdate } from "@goddard-ai/storage"
 import { spawn } from "node:child_process"
 import { join } from "node:path"
 import { Readable, Writable } from "node:stream"
+import { noop, once } from "radashi"
 import { serve } from "srvx"
 import manifest from "../package.json" assert { type: "json" }
 import { createAgentConnection, getAcpMessageResult, isAcpRequest, matchAcpRequest } from "./acp.js"
@@ -69,12 +70,10 @@ export function sessionStatusFromAgentMessage(
   return null
 }
 
-export function shouldExitAfterInitialPrompt(params: SessionParams): boolean {
-  return (
-    !isPropertyDefined(params, "sessionId") &&
-    params.oneShot === true &&
-    params.initialPrompt !== undefined
-  )
+export function shouldExitAfterInitialPrompt(
+  params: SessionParams,
+): params is SessionParams & { oneShot: true } {
+  return !isPropertyDefined(params, "sessionId") && params.oneShot === true
 }
 
 /**
@@ -126,10 +125,10 @@ async function spawnAgentProcess(
   })
 }
 
-function isPropertyDefined<T extends object>(
+function isPropertyDefined<T extends object, P extends T extends any ? keyof T : never>(
   obj: T,
-  property: keyof T,
-): obj is T & Required<Pick<T, keyof T>> {
+  property: P,
+): obj is T & Required<Pick<T, P>> {
   return property in obj && obj[property] !== undefined
 }
 
@@ -185,7 +184,7 @@ async function initializeSession(input: Writable, output: Readable, params: Sess
     }
 
     const newSession = await agent.newSession(params)
-    if (params.initialPrompt) {
+    if (isPropertyDefined(params, "initialPrompt")) {
       const prompt = params.initialPrompt
       const promptRequest = injectSystemPrompt(
         {
@@ -235,19 +234,73 @@ type AcpPromptRequest = acp.AnyMessage & {
 
 export async function serveAgent(serverId: string, params: SessionParams) {
   const agentProcess = await spawnAgentProcess(serverId, params)
-  const agentConnection = createAgentConnection(agentProcess.stdin, agentProcess.stdout)
-
   const session = await initializeSession(agentProcess.stdin, agentProcess.stdout, params)
 
   const updateSession = async (update: SQLSessionUpdate) => {
     if (update.status) {
       session.status = update.status
     }
-    await SessionStorage.update(session.sessionId, update).catch(() => {})
+    await SessionStorage.update(session.sessionId, update).catch(noop)
+  }
+
+  const storeSession = once(async (serverURL: URL | null, status: SessionStatus) => {
+    const sessionUpdate = {
+      serverId,
+      serverAddress: serverURL?.href ?? null,
+      serverPid: serverURL ? process.pid : null,
+      agentName:
+        typeof params.agent === "string"
+          ? params.agent
+          : (params.agent.package ?? params.agent.cmd ?? "custom"),
+      status,
+      cwd: params.cwd,
+      mcpServers: params.mcpServers,
+      metadata: params.metadata ?? null,
+    }
+
+    if (params.sessionId !== undefined) {
+      await updateSession(sessionUpdate)
+    } else {
+      await SessionStorage.create({
+        id: session.sessionId,
+        ...sessionUpdate,
+      })
+    }
+  })
+
+  if (shouldExitAfterInitialPrompt(params)) {
+    await storeSession(null, "done")
+    agentProcess.kill()
+    return {
+      serverAddress: null,
+      sessionId: session.sessionId,
+    }
   }
 
   const clientRequests: AcpRequestMap = new Map()
+
+  const agentConnection = createAgentConnection(agentProcess.stdin, agentProcess.stdout)
   const agentInput = agentConnection.getWriter()
+
+  const server = serve({
+    hostname: "localhost",
+    port: Number(process.env.PORT || 0),
+    silent: true,
+    fetch: async (request) => {
+      const url = new URL(request.url)
+
+      if (request.method === "GET" && url.pathname === "/history") {
+        return Response.json(session.history)
+      }
+
+      if (request.method === "POST" && url.pathname === "/shutdown") {
+        agentProcess.kill()
+        return Response.json({ ok: true })
+      }
+
+      return Response.json({ error: "Not Found" }, { status: 404 })
+    },
+  })
 
   const wss = createWebSocketHandler({
     onConnection(ws) {
@@ -268,7 +321,7 @@ export async function serveAgent(serverId: string, params: SessionParams) {
         // Infer session status from client messages if possible.
         const nextStatus = sessionStatusFromClientMessage(message, session.status)
         if (nextStatus) {
-          updateSession({ status: nextStatus })
+          updateSession({ status: nextStatus }).catch(noop)
         }
 
         if (
@@ -306,7 +359,7 @@ export async function serveAgent(serverId: string, params: SessionParams) {
       const clientRequest = clientRequests.get(message.id)
       const nextStatus = sessionStatusFromAgentMessage(clientRequest, message)
       if (nextStatus) {
-        updateSession({ status: nextStatus })
+        updateSession({ status: nextStatus }).catch(noop)
       }
       if (clientRequest) {
         clientRequests.delete(message.id)
@@ -317,85 +370,35 @@ export async function serveAgent(serverId: string, params: SessionParams) {
     wss.broadcast(message)
   })
 
-  let shuttingDown = false
-
-  const shutdownServer = async () => {
-    if (shuttingDown) return
-    shuttingDown = true
-
+  agentProcess.once("exit", async () => {
     wss.close()
-    await server.close(true).catch(() => {})
-    await agentInput.close().catch(() => {})
-    await agentSubscription.close().catch(() => {})
+    await server.close(true).catch(noop)
+    await agentInput.close().catch(noop)
+    await agentSubscription.close().catch(noop)
+  })
 
-    // Request a graceful exit.
-    agentProcess.kill()
+  wss.listen(server, "/acp")
+  await server.ready()
 
+  const serverAddress = new URL(server.url!)
+  await storeSession(serverAddress, session.status)
+
+  agentProcess.once("exit", async (code, signal) => {
     const nextUpdate: SQLSessionUpdate = {
       serverAddress: null,
       serverPid: null,
     }
-    if (session.status !== "done") {
+    if (code !== 0 && code !== null) {
+      nextUpdate.status = "error"
+      nextUpdate.errorMessage = `Exited with code ${code}`
+    } else if (isErrorSignal(signal)) {
+      nextUpdate.status = "error"
+      nextUpdate.errorMessage = `Killed by ${signal}`
+    } else if (session.status !== "done") {
       nextUpdate.status = "cancelled"
     }
-    updateSession(nextUpdate)
-  }
-
-  agentProcess.once("exit", () => {
-    shutdownServer().catch(console.error)
+    await updateSession(nextUpdate).catch(noop)
   })
-
-  const server = serve({
-    hostname: "localhost",
-    port: Number(process.env.PORT || 0),
-    silent: true,
-    fetch: async (request) => {
-      const url = new URL(request.url)
-
-      if (request.method === "GET" && url.pathname === "/history") {
-        return Response.json(session.history)
-      }
-
-      if (request.method === "POST" && url.pathname === "/shutdown") {
-        await shutdownServer()
-        return Response.json({ ok: true })
-      }
-
-      return Response.json({ error: "Not Found" }, { status: 404 })
-    },
-  })
-
-  await server.ready()
-
-  const serverAddress = new URL(server.url!)
-  if (params.sessionId !== undefined) {
-    await updateSession({
-      serverId,
-      serverAddress: serverAddress.href,
-      serverPid: process.pid,
-      status: session.status,
-      cwd: params.cwd,
-      mcpServers: params.mcpServers,
-    })
-  } else {
-    await SessionStorage.create({
-      id: session.sessionId,
-      serverId,
-      serverAddress: serverAddress.href,
-      serverPid: process.pid,
-      status: session.status,
-      agentName:
-        typeof params.agent === "string"
-          ? params.agent
-          : (params.agent.package ?? params.agent.cmd ?? "custom"),
-      cwd: params.cwd,
-      mcpServers: params.mcpServers,
-    })
-  }
-
-  if (shouldExitAfterInitialPrompt(params)) {
-    await shutdownServer()
-  }
 
   return {
     serverAddress,
@@ -418,4 +421,8 @@ function renderPrompt(prompt: string, variables: Record<string, string>) {
     throw new Error(`Prompt variables were defined but never used: ${unusedVariables.join(", ")}`)
   }
   return renderResult
+}
+
+function isErrorSignal(signal: string | null): boolean {
+  return signal === "SIGKILL" || signal === "SIGABRT" || signal === "SIGQUIT"
 }
