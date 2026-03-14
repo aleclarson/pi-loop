@@ -182,39 +182,34 @@ export const configSchema = z
       /** Pause the loop for 24 hours after this many cycles. Omit to run indefinitely. */
       maxCyclesBeforePause: z.number().int().positive().optional(),
     }),
-    retries: z
-      .object({
-        /** Maximum number of send attempts per cycle before the error is re-thrown. Defaults to `1` (no retry). */
-        maxAttempts: z.number().int().positive().optional(),
-        /** Delay before the first retry, in milliseconds. Defaults to `1000`. */
-        initialDelayMs: z.number().int().nonnegative().optional(),
-        /** Upper bound on the computed backoff delay, in milliseconds. Defaults to `30000`. */
-        maxDelayMs: z.number().int().positive().optional(),
-        /** Exponential backoff multiplier applied after each failed attempt. Defaults to `2`. */
-        backoffFactor: z.number().positive().optional(),
-        /**
-         * Random jitter applied to each retry delay as a fraction of the computed delay.
-         * `0.2` means ±20 %. Defaults to `0.2`.
-         */
-        jitterRatio: z.number().min(0).max(1).optional(),
-        /**
-         * Predicate that decides whether a given error is retryable.
-         * Return `true` to retry, `false` to re-throw immediately.
-         * Defaults to always retrying.
-         */
-        retryableErrors: z
-          .custom<
-            (
-              error: unknown,
-              context: { cycle: number; attempt: number; maxAttempts: number },
-            ) => boolean
-          >(
-            (val) => val === undefined || typeof val === "function",
-            "retries.retryableErrors must be a function",
-          )
-          .optional(),
-      })
-      .optional(),
+    retries: z.object({
+      /** Maximum number of send attempts per cycle before the error is re-thrown. */
+      maxAttempts: z.number().int().positive(),
+      /** Delay before the first retry, in milliseconds. */
+      initialDelayMs: z.number().int().nonnegative(),
+      /** Upper bound on the computed backoff delay, in milliseconds. */
+      maxDelayMs: z.number().int().positive(),
+      /** Exponential backoff multiplier applied after each failed attempt. */
+      backoffFactor: z.number().positive(),
+      /**
+       * Random jitter applied to each retry delay as a fraction of the computed delay.
+       * `0.2` means ±20 %.
+       */
+      jitterRatio: z.number().min(0).max(1),
+      /**
+       * Predicate that decides whether a given error is retryable.
+       * Return `true` to retry, `false` to re-throw immediately.
+       */
+      retryableErrors: z.custom<
+        (
+          error: unknown,
+          context: { cycle: number; attempt: number; maxAttempts: number },
+        ) => boolean
+      >(
+        (val) => typeof val === "function",
+        "retries.retryableErrors must be a function",
+      ),
+    }),
     metrics: z
       .object({
         /** Port on which to expose a Prometheus `/metrics` endpoint. Omit to disable. */
