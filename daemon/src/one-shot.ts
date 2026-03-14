@@ -1,0 +1,81 @@
+import { runAgent } from "@goddard-ai/session"
+import { spawnSync } from "node:child_process"
+import type { FeedbackEvent } from "./feedback.ts"
+
+export type OneShotInput = {
+  event: FeedbackEvent
+  prompt: string
+  projectDir: string
+}
+
+export async function runOneShot(input: OneShotInput): Promise<number> {
+  const branchName = `pr-${input.event.prNumber}`
+  const agentsDir = `${input.projectDir}/.goddard-agents`
+  const worktreeDir = `${agentsDir}/${branchName}-${Date.now()}`
+
+  spawnSync("mkdir", ["-p", agentsDir])
+
+  try {
+    let cpArgs = ["-R", `${input.projectDir}/`, worktreeDir]
+    if (process.platform === "darwin") {
+      cpArgs = ["-cR", `${input.projectDir}/`, worktreeDir]
+    } else if (process.platform === "linux") {
+      cpArgs = ["--reflink=auto", "-R", `${input.projectDir}/`, worktreeDir]
+    }
+
+    let cloneResult = spawnSync("cp", cpArgs, { encoding: "utf8" })
+    let fallbackAttempted = false
+
+    if (cloneResult.status !== 0 && process.platform === "darwin") {
+      fallbackAttempted = true
+      cpArgs = ["-R", `${input.projectDir}/`, worktreeDir]
+      cloneResult = spawnSync("cp", cpArgs, { encoding: "utf8" })
+    }
+
+    if (cloneResult.status !== 0) {
+      console.error(`\n[ERROR] Failed to create agent workspace at ${worktreeDir}`)
+      if (fallbackAttempted) {
+        console.error("Attempted APFS clone (cp -cR) and fallback copy (cp -R). Both failed.")
+      }
+      console.error(`Last attempted command: cp ${cpArgs.join(" ")}`)
+      if (cloneResult.stderr) console.error(`Error output: ${cloneResult.stderr.trim()}`)
+      if (cloneResult.error) console.error(`System error: ${cloneResult.error.message}`)
+      console.error("Cannot proceed with one-shot pi session. Aborting.\n")
+      return 1
+    }
+  } catch {
+    console.error(`\n[ERROR] Exception thrown while creating agent workspace at ${worktreeDir}:`)
+    return 1
+  }
+
+  try {
+    spawnSync("git", ["fetch", "origin", `pull/${input.event.prNumber}/head:${branchName}`], {
+      cwd: worktreeDir,
+      stdio: "ignore",
+    })
+    spawnSync("git", ["checkout", branchName], {
+      cwd: worktreeDir,
+      stdio: "ignore",
+    })
+  } catch {
+    // Ignore git setup failures and let pi run against copied workspace state.
+  }
+
+  try {
+    await runAgent({
+      agent: "pi",
+      cwd: worktreeDir,
+      mcpServers: [],
+      initialPrompt: input.prompt,
+      oneShot: true,
+      metadata: {
+        repository: `${input.event.owner}/${input.event.repo}`,
+        prNumber: input.event.prNumber,
+      },
+    })
+    return 0
+  } catch (error) {
+    console.error(`\n[ERROR] runAgent failed: ${error instanceof Error ? error.message : String(error)}`)
+    return 1
+  }
+}
