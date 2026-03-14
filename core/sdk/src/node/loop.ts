@@ -1,7 +1,7 @@
 import { createJiti } from "@mariozechner/jiti"
 import { dirname, join } from "node:path"
 import { mkdir, writeFile } from "node:fs/promises"
-import { runAgentLoop, type GoddardLoopConfig } from "@goddard-ai/loop"
+import { runAgentLoop as coreRunAgentLoop, type GoddardLoopConfig } from "@goddard-ai/loop"
 import {
   getGlobalConfigPath,
   getLocalConfigPath,
@@ -56,12 +56,12 @@ export async function loadLoopConfig(
   return { config: config as GoddardLoopConfig, path: configPath }
 }
 
-export async function runLoop(
+export async function runAgentLoop(
   cwd: string = process.cwd(),
-  deps?: { createLoopRuntime?: typeof runAgentLoop },
+  deps?: { createLoopRuntime?: typeof coreRunAgentLoop },
 ): Promise<void> {
   const { config } = await loadLoopConfig(cwd)
-  const runtime = deps?.createLoopRuntime ?? runAgentLoop
+  const runtime = deps?.createLoopRuntime ?? coreRunAgentLoop
 
   await runtime({
     session: {
